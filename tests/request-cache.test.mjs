@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+const source=ts.transpileModule(readFileSync(new URL('../src/lib/request-cache.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
+const {RequestCache}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+test('concurrent reads share one request and reuse its result',async()=>{let calls=0;const cache=new RequestCache(1000);const fetch=async()=>{calls++;return 'record'};assert.deepEqual(await Promise.all([cache.get('stock',fetch),cache.get('stock',fetch)]),['record','record']);await cache.get('stock',fetch);assert.equal(calls,1)});
+test('failed requests are retried',async()=>{const cache=new RequestCache(1000);await assert.rejects(cache.get('stock',async()=>{throw Error('offline')}));assert.equal(await cache.get('stock',async()=>42),42)});
+test('expired entries fetch fresh values',async()=>{const cache=new RequestCache(-1);await cache.get('stock',async()=>1);assert.equal(await cache.get('stock',async()=>2),2)});
+test('logout invalidation cannot be undone by an older in-flight response',async()=>{const cache=new RequestCache(1000);let finish;const old=cache.get('staff',()=>new Promise(resolve=>{finish=resolve}));cache.clear();assert.equal(await cache.get('staff',async()=>'new user'),'new user');finish('previous user');await old;assert.equal(await cache.get('staff',async()=>'unexpected'),'new user')});
