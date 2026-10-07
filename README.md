@@ -10,18 +10,16 @@ Independent Vite/React frontend for GitHub Pages and a dedicated Supabase backen
 
 Inventory and garage use email/password Supabase Auth. Only enabled staff profiles have access; roles are `owner`, `inventory`, `garage`. There is no public admin registration.
 
-## Setup pending dedicated Supabase account access
+## Deployment status
 
-Owner account requested: `binalab.3abdulmotor@gmail.com`. The currently connected Supabase account does not expose this account's organization/project. No connection to Abe Din's database is configured.
+The dedicated Supabase project `jvmqpucsbeddusqrgsyt` is connected. Schema, role policies and private photo storage are installed. The browser uses a publishable key; environment variables can override the defaults. Never use service/secret keys in frontend configuration.
 
-1. Select/create the dedicated 3 Abdul Motor project, reviewing its plan/cost first.
-2. Review and apply `supabase/schema.sql` to that project only.
-3. Create the owner's verified email/password user in Supabase Auth and insert their verified UUID in `public.staff` as `owner` (see `supabase/owner-setup.sql`). Never commit passwords or service/secret keys.
-4. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` as GitHub Actions repository variables, or in local `.env`. Publishable keys are expected; service/secret keys must never be frontend variables.
-5. Set Supabase Site URL and allowed password-recovery redirect URL to the actual deployed Pages URL.
-6. Enable GitHub Pages with Source = GitHub Actions; workflow publishes after a main push.
+Remaining setup:
+1. Create the owner's email/password user in Supabase Authentication > Users, then insert the verified UUID in `public.staff` as `owner` (see `supabase/owner-setup.sql`). Supabase dashboard accounts are separate from application login accounts.
+2. Enable GitHub Pages with Source = GitHub Actions and run the Pages workflow.
+3. Set Supabase Site URL and allowed password-recovery redirect URL to the actual deployed Pages URL.
 
-Without configuration, the public catalogue clearly labels display-only sample records; login is unavailable with an explanatory message. This does not claim a working database connection.
+The database currently has no stock or service records. Sample catalogue records are clearly marked and cannot be saved as real records.
 
 ## Development
 
