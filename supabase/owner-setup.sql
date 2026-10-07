@@ -1,0 +1,5 @@
+-- After creating the owner's email/password user in Authentication > Users:
+-- Substitute the verified UUID below; never use user_metadata for authorization.
+-- INSERT INTO public.staff(id,display_name,role,enabled)
+-- VALUES ('OWNER_AUTH_USER_UUID','3 Abdul Motor','owner',true);
+-- Staff are provisioned explicitly. There is no public admin signup.
