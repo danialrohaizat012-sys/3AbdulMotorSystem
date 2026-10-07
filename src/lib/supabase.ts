@@ -1,6 +1,7 @@
 import {createClient} from '@supabase/supabase-js';
-const url=import.meta.env.VITE_SUPABASE_URL as string|undefined;
-const key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string|undefined;
+const url=(import.meta.env.VITE_SUPABASE_URL as string|undefined)||'https://jvmqpucsbeddusqrgsyt.supabase.co';
+// Publishable browser key; access is enforced by database RLS.
+const key=(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string|undefined)||"sb_publishable_bVNc8hZtUwHNlNlBFyzdmw_EDhmswnX";
 let legacyRole='';if(key?.split('.').length===3){try{legacyRole=JSON.parse(atob(key.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).role}catch{legacyRole='invalid'}}
 if(key?.startsWith('sb_secret_')||legacyRole==='service_role')throw new Error('Secret keys must not be used in frontend configuration.');
 export const supabase=url&&key?createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
