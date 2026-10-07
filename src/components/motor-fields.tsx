@@ -1,0 +1,5 @@
+import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from './ui/select';
+import type {ReactNode} from 'react';
+export function Picker({value,onChange,options,label}:{value:string;onChange:(s:string)=>void;options:Record<string,string>;label?:string}){return <Select value={value} onValueChange={onChange}><SelectTrigger aria-label={label} className="picker"><SelectValue/></SelectTrigger><SelectContent>{Object.entries(options).map(([v,l])=><SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select>}
+export function Field({label,children}:{label:string;children:ReactNode}){return <label className="field"><span>{label}</span>{children}</label>}
+export function NumberField({label,value,onChange,cents=false,disabled=false}:{label:string;value:number;onChange:(n:number)=>void;cents?:boolean;disabled?:boolean}){return <Field label={label}><input type="number" min="0" step={cents?'0.01':'1'} disabled={disabled} inputMode={cents?'decimal':'numeric'} value={cents?value/100:value} onChange={e=>onChange(cents?Math.round(Number(e.target.value)*100):Number(e.target.value))}/></Field>}

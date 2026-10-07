@@ -2,43 +2,34 @@ import {RequestCache} from './request-cache';
 import {preparePhoto} from './photo';
 import {supabase,getStaff} from './supabase';
 import {vehicle,job} from './validation';
-import type {Vehicle,Job} from './motor';
-export function mapRow(row:Record<string,unknown>):Vehicle|Job{const data:Record<string,unknown>={};for(const [k,v]of Object.entries(row)){data[k.replace(/_([a-z])/g,(_,l:string)=>l.toUpperCase())]=['items','inspection'].includes(k)?JSON.stringify(v):v;}return data as Vehicle|Job;}
+import type {Vehicle,Job,Payment,AuditEntry,Overview} from './motor';
+import type {BusinessSettings} from './business';
+export function mapFields(row:Record<string,unknown>){const data:Record<string,unknown>={};for(const [k,v] of Object.entries(row))data[k.replace(/_([a-z])/g,(_,l:string)=>l.toUpperCase())]=['items','inspection','prep_items'].includes(k)?JSON.stringify(v):k==='published'?(v?1:0):v;return data}
+export const mapRow=(row:Record<string,unknown>)=>mapFields(row) as Vehicle|Job;
 const recordCache=new RequestCache<(Vehicle|Job)[]>(30_000);
 const photoCache=new RequestCache<Record<string,string>>(45*60_000);
-function clearCaches(){recordCache.clear();photoCache.clear()}
+const settingsCache=new RequestCache<BusinessSettings>(60_000);
+function clearCaches(){recordCache.clear();photoCache.clear();settingsCache.clear()}
 supabase?.auth.onAuthStateChange(event=>{if(['SIGNED_IN','SIGNED_OUT','USER_UPDATED'].includes(event))clearCaches()});
-async function signPhotos(paths:string[]){
- if(!supabase||!paths.length)return {} as Record<string,string>;
- const unique=[...new Set(paths)].sort();
- return photoCache.get(JSON.stringify(unique),async()=>{
-  const {data,error}=await supabase!.storage.from('vehicle-photos').createSignedUrls(unique,3600);
-  if(error)throw Error('Foto gagal dimuatkan. Cuba muat semula.');
-  return Object.fromEntries((data??[]).filter(p=>p.signedUrl&&p.path).map(p=>[p.path!,p.signedUrl!]));
- });
-}
-export async function loadRecords(kind:string,force=false):Promise<(Vehicle|Job)[]>{
- if(!supabase){if(kind==='catalogue')return [];throw new Error('Sistem sedang disediakan. Sila hubungi pentadbir.');}
- if(!['catalogue','vehicles','jobs'].includes(kind))throw Error('Rekod tidak sah.');
- if(force)recordCache.clear();
- const result=await recordCache.get(kind,async()=>{
-  const {data,error}=await supabase!.from(kind).select('*').order('id',{ascending:false});
-  if(error)throw Error('Rekod gagal dimuatkan. Cuba semula.');
-  const mapped=(data??[]).map(mapRow);
-  const urls=await signPhotos(mapped.flatMap(r=>'photo'in r&&r.photo?[r.photo]:[]));
-  return mapped.map(r=>'photo'in r&&r.photo?{...r,photo:urls[r.photo]??''}:r);
- });
- return result.map(r=>({...r}));
-}
-export async function saveRecord(kind:'vehicles'|'jobs',value:Vehicle|Job,update:boolean){if(!supabase)throw Error('Sistem belum tersedia.');if(!await getStaff())throw Error('Akses admin tidak dibenarkan.');let candidate={...value};if('photo'in candidate&&candidate.photo.startsWith('https://')){const path=candidate.photo.split('/vehicle-photos/')[1]?.split('?')[0];if(!path)throw Error('Foto tidak sah.');candidate={...candidate,photo:decodeURIComponent(path)};}
-const parsed=(kind==='vehicles'?vehicle:job).safeParse(candidate);if(!parsed.success)throw Error(parsed.error.issues[0]?.message||'Semak maklumat.');const payload:Record<string,unknown>={};for(const [k,v]of Object.entries(parsed.data)){payload[k.replace(/[A-Z]/g,m=>'_'+m.toLowerCase())]=['items','inspection'].includes(k)?JSON.parse(v as string):k==='published'?!!v:v;}
-const query=update?supabase.from(kind).update(payload).eq('id',value.id):supabase.from(kind).insert(payload);const {data,error}=await query.select('id').single();if(error)throw Error('Rekod gagal disimpan. Semak akses dan maklumat, kemudian cuba semula.');recordCache.clear();return data;}
-export async function uploadPhoto(file:File){
- if(!supabase)throw Error('Sistem belum tersedia.');
- const photo=await preparePhoto(file);const key=crypto.randomUUID()+(photo.type==='image/webp'?'.webp':'.jpg');
- const {error}=await supabase.storage.from('vehicle-photos').upload(key,photo,{upsert:false,cacheControl:'3600',contentType:photo.type});
- if(error)throw Error('Foto gagal dimuat naik. Cuba semula.');
- const {data,error:signedError}=await supabase.storage.from('vehicle-photos').createSignedUrl(key,3600);
- if(signedError||!data)throw Error('Foto belum dapat dipaparkan. Cuba semula.');
- return data.signedUrl;
-}
+function client(){if(!supabase)throw Error('Sistem belum tersedia.');return supabase}
+export function photoKey(value:string){if(!value)return '';if(!value.startsWith('https://'))return value;const path=value.split('/vehicle-photos/')[1]?.split('?')[0];if(!path)throw Error('Foto tidak sah.');return decodeURIComponent(path)}
+export function photoPaths(v:Vehicle){return [...new Set((v.photos?.length?v.photos:[v.photo]).filter(Boolean).map(photoKey))]}
+export async function signPhotos(paths:string[]){if(!paths.length)return {} as Record<string,string>;const unique=[...new Set(paths.map(photoKey))].sort();return photoCache.get(JSON.stringify(unique),async()=>{const {data,error}=await client().storage.from('vehicle-photos').createSignedUrls(unique,3600);if(error)throw Error('Foto gagal dimuatkan. Cuba muat semula.');return Object.fromEntries((data??[]).filter(p=>p.signedUrl&&p.path).map(p=>[p.path!,p.signedUrl!]))})}
+async function decorate(rows:Record<string,unknown>[]){const mapped=rows.map(mapRow);const urls=await signPhotos(mapped.flatMap(r=>'photo'in r&&r.photo?[r.photo]:[]));return mapped.map(r=>'photo'in r&&r.photo?{...r,photo:urls[r.photo]??''}:r)}
+export async function loadRecords(kind:string,force=false):Promise<(Vehicle|Job)[]>{if(!['catalogue','vehicles','jobs'].includes(kind))throw Error('Rekod tidak sah.');if(force)recordCache.clear();const result=await recordCache.get(kind,async()=>{const rows:Record<string,unknown>[]=[];for(let offset=0;;offset+=250){let query=client().from(kind).select('*').order('id',{ascending:false}).range(offset,offset+249);if(kind==='jobs')query=query.neq('status','collected');const {data,error}=await query;if(error)throw Error('Rekod gagal dimuatkan. Cuba semula.');rows.push(...data);if(data.length<250)break;}return decorate(rows)});return result.map(r=>({...r}))}
+export async function getRecord(kind:'vehicles'|'jobs'|'catalogue',id:number){const {data,error}=await client().from(kind).select('*').eq('id',id).maybeSingle();if(error||!data)throw Error('Rekod tidak tersedia atau akses tidak dibenarkan.');return (await decorate([data]))[0]}
+function errorMessage(error:{code?:string;message:string}){if(error.code==='23505')return 'Nombor casis ini sudah digunakan dalam stok aktif.';if(error.code==='P0001'||error.code==='23514')return error.message;return 'Operasi gagal. Semak akses dan maklumat, kemudian cuba semula.'}
+export async function saveRecord(kind:'vehicles'|'jobs',value:Vehicle|Job,update:boolean){if(!await getStaff())throw Error('Akses admin tidak dibenarkan.');let candidate={...value};if('photo'in candidate){const paths=photoPaths(candidate);candidate={...candidate,photo:paths[0]??'',photos:paths,prep:JSON.parse(candidate.prepItems||'[]').reduce((s:number,l:{qty:number;rate:number})=>s+l.qty*l.rate,0)}}const parsed=(kind==='vehicles'?vehicle:job).safeParse(candidate);if(!parsed.success)throw Error(parsed.error.issues[0]?.message||'Semak maklumat.');const payload:Record<string,unknown>={};for(const [k,v] of Object.entries(parsed.data)){if(k==='paid')continue;payload[k.replace(/[A-Z]/g,m=>'_'+m.toLowerCase())]=['items','inspection','prepItems'].includes(k)?JSON.parse(v as string):k==='published'?!!v:v;}
+let query=update?client().from(kind).update(payload).eq('id',value.id).eq('version',value.version??0):client().from(kind).insert(payload);const {data,error}=await query.select('*').maybeSingle();if(error)throw Error(errorMessage(error));if(!data)throw Error('Rekod telah berubah oleh staf lain. Muat semula dan semak sebelum menyimpan.');recordCache.clear();return mapRow(data)}
+export async function uploadPhoto(file:File){const photo=await preparePhoto(file);const key=crypto.randomUUID()+(photo.type==='image/webp'?'.webp':'.jpg');const {error}=await client().storage.from('vehicle-photos').upload(key,photo,{upsert:false,cacheControl:'3600',contentType:photo.type});if(error)throw Error('Foto gagal dimuat naik. Cuba semula.');return key}
+export async function removeUnusedPhotos(paths:string[]){if(!paths.length)return;const keys=[...new Set(paths.filter(Boolean).map(photoKey))];const {error}=await client().storage.from('vehicle-photos').remove(keys);if(error)throw Error('Pembersihan foto belum berjaya. Cuba butang Bersihkan foto di inventori.');photoCache.clear()}
+export async function cleanupOldPhotos(){const referenced=new Set<string>();const all=await loadRecords('vehicles',true);for(const r of all)for(const key of photoPaths(r as Vehicle))referenced.add(key);let names:string[]=[];for(let offset=0;;offset+=100){const {data,error}=await client().storage.from('vehicle-photos').list('',{limit:100,offset,sortBy:{column:'name',order:'asc'}});if(error)throw Error('Foto belum dapat disenaraikan.');for(const p of data)if(p.id&&p.created_at&&!referenced.has(p.name)&&new Date(p.created_at).getTime()<Date.now()-2*3600_000)names.push(p.name);if(data.length<100)break;}
+for(let i=0;i<names.length;i+=50)await removeUnusedPhotos(names.slice(i,i+50));return names.length}
+export async function loadSettings(force=false){if(force)settingsCache.clear();return settingsCache.get('business',async()=>{const {data,error}=await client().from('business_settings').select('*').eq('id',1).single();if(error)throw Error('Tetapan WhatsApp belum dapat dimuatkan.');return mapFields(data) as BusinessSettings})}
+export async function saveSettings(value:BusinessSettings){const {data,error}=await client().from('business_settings').update({whatsapp_phone:value.whatsappPhone,whatsapp_template:value.whatsappTemplate}).eq('id',1).eq('version',value.version).select('*').maybeSingle();if(error)throw Error(errorMessage(error));if(!data)throw Error('Tetapan telah berubah. Muat semula sebelum menyimpan.');settingsCache.clear();return mapFields(data) as BusinessSettings}
+export async function loadPayments(kind:'vehicles'|'jobs',id:number){const rows:Payment[]=[];for(let offset=0;;offset+=250){const {data,error}=await client().from('payments').select('*').eq(kind==='vehicles'?'vehicle_id':'job_id',id).order('id',{ascending:false}).range(offset,offset+249);if(error)throw Error('Sejarah bayaran gagal dimuatkan.');rows.push(...data.map(r=>mapFields(r) as Payment));if(data.length<250)break;}return rows}
+export type PaymentInput={requestId:string;amount:number;method:string;purpose:string;paidAt:string;note:string;reversesId?:number};
+export async function addPayment(kind:'vehicles'|'jobs',id:number,input:PaymentInput){const staff=await getStaff();if(!staff)throw Error('Akses staf diperlukan.');const payload={request_id:input.requestId,[kind==='vehicles'?'vehicle_id':'job_id']:id,amount:input.amount,method:input.method,purpose:input.amount<0?'refund':input.purpose,paid_at:input.paidAt,note:input.note,reverses_id:input.reversesId??null,created_by:staff.id};const {error}=await client().from('payments').insert(payload);if(error){if(error.code==='23505'){const {data}=await client().from('payments').select('id,amount,vehicle_id,job_id').eq('request_id',input.requestId).maybeSingle();if(!data||data.amount!==input.amount||data[kind==='vehicles'?'vehicle_id':'job_id']!==id)throw Error('Rujukan transaksi tidak sepadan.');}else throw Error(errorMessage(error));}recordCache.clear()}
+export async function serviceHistory(search:string){const {data,error}=await client().rpc('service_history',{search_text:search});if(error)throw Error(errorMessage(error));return (data as Record<string,unknown>[]).map(r=>mapRow(r) as Job)}
+export async function loadOverview(){const {data,error}=await client().rpc('owner_overview');if(error)throw Error(errorMessage(error));return data as Overview}
+export async function loadAudit(){const {data,error}=await client().from('audit_log').select('id,record_kind,record_id,action,changed_fields,actor_name,created_at').order('id',{ascending:false}).limit(40);if(error)throw Error('Log perubahan belum dapat dimuatkan.');return data.map(r=>mapFields(r) as AuditEntry)}
