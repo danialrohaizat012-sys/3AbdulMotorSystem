@@ -1,0 +1,6 @@
+export type StaffRole='owner'|'inventory'|'garage'|'both';
+export const permissionLabels:Record<string,string>={inventory_edit:'Tambah & edit stok',garage_edit:'Tambah & edit job servis',receive_payments:'Terima bayaran',publish_catalogue:'Ubah paparan katalog',manage_whatsapp:'Edit tetapan WhatsApp',manage_photos:'Muat naik & bersihkan foto'};
+export type StaffProfile={id:string;display_name:string;role:StaffRole;enabled:boolean;version:number;permissions:Record<string,boolean>;payment_limit:number|null;must_change_password:boolean;email?:string};
+export function canAccess(staff:StaffProfile|null|undefined,mode:string){if(!staff?.enabled||staff.must_change_password)return false;if(staff.role==='owner')return true;if(mode==='staff')return false;return staff.role==='both'||staff.role===mode}
+export function can(staff:StaffProfile|null|undefined,action:string){if(!staff?.enabled||staff.must_change_password)return false;if(staff.role==='owner')return true;const module=action==='garage_edit'?'garage':'inventory';if(action!=='receive_payments'&&!canAccess(staff,module))return false;return !!staff.permissions[action]}
+export function strongPassword(value:string){return value.length>=12&&value.length<=128&&/[A-Z]/.test(value)&&/[a-z]/.test(value)&&/[0-9]/.test(value)}
