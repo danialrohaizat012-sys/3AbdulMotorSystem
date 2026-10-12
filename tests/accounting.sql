@@ -1,0 +1,62 @@
+-- Production safety regression: all test records, opening balances and profile edits roll back.
+begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','41ad4268-5653-4ab0-84c4-b89dda95adf8',true);
+update public.accounting_accounts set opening_balance=case id when 'cash' then 100000 else 200000 end,opening_on='2026-10-01' where opening_on is null;
+do $$
+declare e bigint;t bigint;r bigint;v bigint;p bigint;request uuid:=gen_random_uuid();doc jsonb;state jsonb;
+begin
+ doc:='{"date":"2026-10-12","kind":"expense","amount":10000,"account":"bank","category":"Sewa","description":"UAT ACCOUNTING ONLY","counterparty":"","reference":"ROLLBACK","note":""}';
+ e:=public.accounting_post(request,doc);
+ if public.accounting_post(request,doc)<>e then raise exception 'FAIL retry duplicates';end if;
+ begin perform public.accounting_post(request,jsonb_set(doc,'{amount}','9999'));raise exception 'FAIL altered retry accepted';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
+ perform public.accounting_post(gen_random_uuid(),'{"date":"2026-10-12","kind":"capital","amount":30000,"account":"cash","category":"Modal owner","description":"UAT capital"}');
+ perform public.accounting_post(gen_random_uuid(),'{"date":"2026-10-12","kind":"drawings","amount":2000,"account":"cash","category":"Pengeluaran owner","description":"UAT drawings"}');
+ perform public.accounting_post(gen_random_uuid(),'{"date":"2026-10-12","kind":"income","amount":4000,"account":"bank","category":"Pendapatan lain","description":"UAT other income"}');
+ t:=public.accounting_post(gen_random_uuid(),'{"date":"2026-10-12","kind":"transfer","amount":5000,"account":"bank","toAccount":"cash","category":"Pindahan dalaman","description":"UAT transfer"}');
+ request:=gen_random_uuid();r:=public.accounting_reverse(e,request,'2026-10-12','UAT correction');
+ if public.accounting_reverse(e,request,'2026-10-12','UAT correction')<>r then raise exception 'FAIL reversal retry';end if;
+ begin perform public.accounting_reverse(e,gen_random_uuid(),'2026-10-12','Another reason');raise exception 'FAIL duplicate reversal';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
+ begin update public.accounting_entries set amount=1 where id=e;raise exception 'FAIL ledger mutable';exception when insufficient_privilege then null;end;
+ begin update public.accounting_accounts set opening_balance=0 where id='cash';raise exception 'FAIL opening editable';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
+ insert into public.vehicles(brand,model,year,price,plate,published) values('TEST ACCOUNTING','Rollback',2026,100000,'TESTACCT',false) returning id into v;
+ insert into public.payments(request_id,vehicle_id,amount,method,purpose) values(gen_random_uuid(),v,20000,'cash','deposit') returning id into p;
+ insert into public.payments(request_id,vehicle_id,amount,method,purpose,reverses_id,note) values(gen_random_uuid(),v,-5000,'cash','refund',p,'UAT refund');
+ if (select count(*) from private.accounting_rows() where source_key='P:'||p)<>1 then raise exception 'FAIL duplicated payment projection';end if;
+ if (select account_id from private.accounting_rows() where source_key='P:'||p)<>'cash' then raise exception 'FAIL cash mapping';end if;
+ perform public.accounting_annotate('P:'||p,0,'cash',true,'UAT checked');
+ begin perform public.accounting_annotate('P:'||p,0,'bank',true,'UAT stale update');raise exception 'FAIL stale metadata accepted';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
+ perform public.accounting_post(gen_random_uuid(),'{"date":"2026-10-12","kind":"adjustment","amount":2500,"account":"bank","category":"Pelarasan baki","description":"UAT adjustment in","note":"Correct opening balance"}');
+ perform public.accounting_post(gen_random_uuid(),'{"date":"2026-10-12","kind":"adjustment","amount":-1000,"account":"bank","category":"Pelarasan baki","description":"UAT adjustment out","note":"Correct opening balance"}');
+ state:=public.accounting_snapshot('2026-10-01');
+ if (select coalesce(sum(case when kind in ('income','capital','adjustment') then amount when kind in ('expense','drawings') then -amount else 0 end),0) from public.accounting_feed('2026-10-01',now()))<>48500 then raise exception 'FAIL public typed feed';end if;
+ if (state->'summary'->>'net')::bigint<>48500 then raise exception 'FAIL cash flow %',state;end if;
+ if (select sum((a->>'balance')::bigint) from jsonb_array_elements(state->'accounts') a)<>348500 then raise exception 'FAIL balances %',state;end if;
+ if (select count(*) from public.accounting_audit)=0 then raise exception 'FAIL missing audit';end if;
+ if (select count(*) from public.accounting_feed('2026-09-01'))<>0 then raise exception 'FAIL month leak';end if;
+ begin insert into public.accounting_receipts(source_key,storage_path,original_name,created_by) values('M:'||e,auth.uid()::text||'/not-uploaded.pdf','Bad',auth.uid());raise exception 'FAIL unattached file reference';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
+end $$;
+reset role;
+insert into storage.objects(bucket_id,name,metadata) values('accounting-receipts','41ad4268-5653-4ab0-84c4-b89dda95adf8/11111111-1111-4111-8111-111111111111.pdf','{"mimetype":"application/pdf","size":20}');
+set local role authenticated;
+insert into public.accounting_receipts(source_key,storage_path,original_name,created_by) select 'M:'||id,'41ad4268-5653-4ab0-84c4-b89dda95adf8/11111111-1111-4111-8111-111111111111.pdf','UAT receipt only',auth.uid() from public.accounting_entries where description='UAT ACCOUNTING ONLY';
+do $$begin if not exists(select 1 from public.accounting_receipts) or not exists(select 1 from storage.objects where bucket_id='accounting-receipts') then raise exception 'FAIL owner receipt access';end if;end $$;
+reset role;
+-- Temporarily exercise the existing owner's identity as ordinary/disabled staff; fully rolled back.
+update public.staff set role='both' where id='41ad4268-5653-4ab0-84c4-b89dda95adf8';
+set local role authenticated;
+do $$begin
+ if exists(select 1 from public.accounting_accounts) or exists(select 1 from public.accounting_entries) or exists(select 1 from public.accounting_receipts) or exists(select 1 from public.accounting_audit) then raise exception 'FAIL staff financial disclosure';end if;
+ begin perform public.accounting_snapshot('2026-10-01');raise exception 'FAIL staff RPC';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
+ begin perform public.accounting_post(gen_random_uuid(),'{"date":"2026-10-12","kind":"income","amount":100,"account":"cash","category":"Pendapatan lain","description":"Forbidden"}');raise exception 'FAIL staff posting';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
+ if exists(select 1 from storage.objects where bucket_id='accounting-receipts') then raise exception 'FAIL receipt storage disclosure';end if;
+end $$;
+reset role;
+update public.staff set role='owner',enabled=false where id='41ad4268-5653-4ab0-84c4-b89dda95adf8';
+set local role authenticated;
+do $$begin begin perform public.accounting_snapshot('2026-10-01');raise exception 'FAIL disabled owner';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;end $$;
+reset role;
+set local role anon;
+do $$begin begin perform public.accounting_snapshot('2026-10-01');raise exception 'FAIL public finance RPC';exception when insufficient_privilege then null;end;end $$;
+rollback;
+select 'PASS accounting: idempotency, signed reversals, transfers, deposit/refund projection, account balances, audit, RLS and receipt validation' result;
