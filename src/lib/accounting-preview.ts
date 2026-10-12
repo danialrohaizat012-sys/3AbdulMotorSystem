@@ -19,3 +19,5 @@ export function accountBalance(account:AccountId,entries:PreviewEntry[]){return 
 export function categoryTotals(entries:PreviewEntry[]){const values=new Map<string,number>();for(const e of entries)if(e.kind==='expense')values.set(e.category,(values.get(e.category)||0)+e.amount);return [...values].sort((a,b)=>b[1]-a[1])}
 export function csvCell(value:string){return '"'+(/^[=+\-@\t\r]/.test(value)?"'":'')+value.replace(/"/g,'""')+'"'}
 export function previewCsv(entries:PreviewEntry[]){return '\uFEFF'+[['DATA CONTOH SAHAJA — 3 ABDUL MOTOR'],['Tarikh','Rujukan','Butiran','Jenis','Kategori','Sumber','Akaun','Ke akaun','Amaun (RM)'],...entries.map(e=>[e.date,e.reference,e.description,e.kind,e.category,e.source,e.account,e.toAccount||'',(e.amount/100).toFixed(2)])].map(row=>row.map(csvCell).join(',')).join('\r\n')}
+
+export function validPreviewMonth(value:string){return /^\d{4}-(0[1-9]|1[0-2])$/.test(value)}
