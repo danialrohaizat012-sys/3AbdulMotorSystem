@@ -142,3 +142,5 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .motor-footer .footer-credit b{font-weight:600;color:inherit}
 .motor-footer .footer-credit:hover{color:#f5f7fa}
 @media(max-width:400px){.page-footer.motor-footer{gap:0 12px;font-size:10px}.motor-footer .footer-credit{font-size:10px}}
+
+@media(max-width:767px){.mobile-navigation:has(a[href="#staff"]):has(a[href="#accounting"]){grid-template-columns:repeat(5,minmax(0,1fr));padding-left:4px;padding-right:4px}.mobile-navigation:has(a[href="#accounting"]) a{padding:7px 2px;min-width:0}.mobile-navigation:has(a[href="#accounting"]) a span{font-size:10px;white-space:nowrap}}

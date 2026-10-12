@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+const source=ts.transpileModule(readFileSync(new URL('../src/lib/accounting-preview.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
+const {previewEntries,previewAccounts,cashSummary,accountBalance,monthlyEntries,previewCsv}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+test('internal transfers change account balances without inflating cash flow',()=>{const transfer={id:'test',date:'2026-10-12',kind:'transfer',amount:10000,account:'bank',toAccount:'cash'};assert.deepEqual(cashSummary([transfer]),{income:0,expense:0,net:0});assert.equal(accountBalance('bank',[transfer]),1790000);assert.equal(accountBalance('cash',[transfer]),260000)});
+test('sample totals reconcile to opening balances plus net receipts',()=>{const summary=cashSummary(previewEntries);assert.deepEqual(summary,{income:820000,expense:539000,net:281000});const total=previewAccounts.reduce((v,a)=>v+accountBalance(a.id,previewEntries),0);assert.equal(total,previewAccounts.reduce((v,a)=>v+a.opening,0)+summary.net);assert.equal(accountBalance('bank',previewEntries),1959000);assert.equal(accountBalance('cash',previewEntries),372000)});
+test('month filtering prevents one month from leaking into another',()=>{assert.equal(monthlyEntries(previewEntries,'2026-09').length,0);assert.equal(monthlyEntries(previewEntries,'2026-10').length,10)});
+test('CSV is marked as sample and protects formula-like user input',()=>{const csv=previewCsv([{...previewEntries[0],description:'=HYPERLINK("bad")'}]);assert.ok(csv.includes('DATA CONTOH SAHAJA'));assert.ok(csv.includes('"\'=HYPERLINK(""bad"")"'));assert.ok(csv.includes('6800.00'))});

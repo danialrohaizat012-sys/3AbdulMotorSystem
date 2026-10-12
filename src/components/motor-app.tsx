@@ -10,7 +10,7 @@ import {RecordEditor} from './record-editor';
 import {PaymentPanel,InventoryTools,OwnerPanel,ServiceHistory,ShareButton} from './operations-ui';
 import {whatsappLink} from '@/lib/business';
 import type {BusinessSettings} from '@/lib/business';
-import {Bike, Wrench, Package, Search, Plus, ShieldCheck, Gauge, CalendarDays, CircleCheck, Wallet, X, RefreshCw, Eye, Banknote, Layers, ChevronRight} from 'lucide-react';
+import {Bike, Wrench, Package, Search, Plus, ShieldCheck, Gauge, CalendarDays, CircleCheck, Wallet, X, RefreshCw, Eye, Banknote, Layers, ChevronRight, BookOpen} from 'lucide-react';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/ui/select';
 import {SidebarProvider,Sidebar,SidebarHeader,SidebarContent,SidebarFooter,SidebarMenu,SidebarMenuItem,SidebarMenuButton,SidebarInset,SidebarTrigger} from '@/components/ui/sidebar';
@@ -29,7 +29,7 @@ export default function MotorApp({mode}:{mode:Mode}){
  const admin=mode!=='catalogue';const [records,setRecords]=useState<(Vehicle|Job)[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [query,setQuery]=useState('');const [status,setStatus]=useState('all');const [brand,setBrand]=useState('all');const [selected,setSelected]=useState<Vehicle|Job|null>(null);const [adding,setAdding]=useState(false);const [detail,setDetail]=useState<Vehicle|Job|null>(null);
  const [demo,setDemo]=useState(false);const [owner,setOwner]=useState(false);const [staff,setStaff]=useState<StaffProfile|null>(null);const [settings,setSettings]=useState<BusinessSettings|null>(null);
  useEffect(()=>{if(admin)void getStaff().then(s=>{setStaff(s);setOwner(s?.role==='owner')}).catch(()=>setOwner(false));void loadSettings().then(setSettings).catch(()=>{});},[admin]);
- const navigation=owner?[...nav,{mode:'staff',href:'#staff',label:'Akses staf',icon:ShieldCheck}]:nav;const editable=can(staff,mode==='garage'?'garage_edit':'inventory_edit');
+ const navigation=owner?[...nav,{mode:'accounting',href:'#accounting',label:'Accounting',icon:BookOpen},{mode:'staff',href:'#staff',label:'Akses staf',icon:ShieldCheck}]:nav;const editable=can(staff,mode==='garage'?'garage_edit':'inventory_edit');
  const kind=mode==='garage'?'jobs':mode==='inventory'?'vehicles':'catalogue';
  const load=useCallback(async(force=false)=>{setLoading(true);try{setRecords(await loadRecords(kind,force));setError('');}catch(e){setError(e instanceof Error?e.message:'Rekod gagal dimuatkan.');}finally{setLoading(false)}},[kind]);useEffect(()=>{void load()},[load]);
  const shown=demo?(mode==='garage'?demoJobs:demoVehicles):records;
