@@ -144,3 +144,16 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 @media(max-width:400px){.page-footer.motor-footer{gap:0 12px;font-size:10px}.motor-footer .footer-credit{font-size:10px}}
 
 @media(max-width:767px){.mobile-navigation:has(a[href="#staff"]):has(a[href="#accounting"]){grid-template-columns:repeat(5,minmax(0,1fr));padding-left:4px;padding-right:4px}.mobile-navigation:has(a[href="#accounting"]) a{padding:7px 2px;min-width:0}.mobile-navigation:has(a[href="#accounting"]) a span{font-size:10px;white-space:nowrap}}
+
+/* Compact catalogue visits and restrained footer contact links. */
+.visitor-counter.visitor-counter-compact{flex-direction:row;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px 20px;margin-top:22px;padding:8px 0;border:0;border-radius:0;background:transparent;color:#aebdcc;font-size:11px}
+.visitor-compact-title{display:inline-flex;align-items:center;gap:6px;color:#aebdcc;font-size:11px}
+.visitor-counter-compact .visitor-counts{display:flex;width:auto;gap:18px;justify-content:flex-start}
+.visitor-counter-compact .visitor-counts>span{font-size:11px;color:#aebdcc;white-space:nowrap}
+.visitor-counter-compact .visitor-counts strong{display:inline;margin-left:4px;font-size:12px;font-weight:600;color:#d5dfeb;font-variant-numeric:tabular-nums}
+.visitor-counter-compact>small{font-size:10px}.visitor-counter-compact+.motor-footer{margin-top:8px}
+.footer-socials{display:flex;align-items:center;gap:4px}
+.footer-socials a,.footer-socials button{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;padding:0;border:0;border-radius:50%;background:transparent;color:#bfccdb;transition:background .15s,color .15s}
+.footer-socials a:hover{background:#ffd21c0d;color:#ffd21c}.footer-socials button:disabled{opacity:.48;cursor:default}
+.footer-links-settings{margin-top:24px;padding-top:22px;border-top:1px solid #3b4a5b}.footer-links-settings h3{font-size:16px;margin-bottom:10px}.footer-links-settings>.form-note{margin-bottom:16px}.footer-links-settings input{font-size:14px}
+@media(max-width:767px){.visitor-counter.visitor-counter-compact{justify-content:center;gap:10px 16px;margin-top:18px;padding:6px 0}.visitor-counter-compact .visitor-counts{gap:14px}.page-footer.motor-footer .footer-socials{order:-1;flex-basis:100%;justify-content:center;margin-bottom:4px}.footer-links-settings input{font-size:16px}}
