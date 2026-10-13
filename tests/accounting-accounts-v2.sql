@@ -14,7 +14,7 @@ begin
  insert into public.vehicles(brand,model,year,price,cost,plate,published) values('UAT ONLY','Rollback',2026,100000,20000,'UATV2',false) returning id into v;
  begin insert into public.payments(request_id,vehicle_id,amount,method,purpose,paid_at) values(gen_random_uuid(),v,1,'cash','deposit',now()+interval '1 minute');raise exception 'FAIL future payment';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
  insert into public.payments(request_id,vehicle_id,amount,method,purpose,paid_at) values(gen_random_uuid(),v,10000,'card','deposit','2026-09-30T10:00:00+08:00') returning id into p;
- s:=public.accounting_snapshot('2026-10-01');if not exists(select 1 from jsonb_array_elements(s->'unmatched') u where u->>'source_key'='P:'||p) then raise exception 'FAIL historical unmatched payment hidden';end if;
+ s:=public.accounting_snapshot('2026-10-01');if (s->'summary'->>'net')::bigint<>0 then raise exception 'FAIL unmatched card counted as cash';end if;if not exists(select 1 from jsonb_array_elements(s->'unmatched') u where u->>'source_key'='P:'||p) then raise exception 'FAIL historical unmatched payment hidden';end if;
  begin perform public.accounting_review('P:'||p,0,mb,true,'UAT settle',null,300,'');raise exception 'FAIL card date omitted';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
  begin perform public.accounting_review('P:'||p,0,mb,true,'UAT settle','2026-10-12',10001,'');raise exception 'FAIL excessive fee';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
  perform public.accounting_review('P:'||p,0,mb,true,'UAT settlement','2026-10-12',300,'');

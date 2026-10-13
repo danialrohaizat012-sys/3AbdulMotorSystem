@@ -6,7 +6,7 @@ Owner setup: Accounting → Akaun → rename the existing Bank utama or add Mayb
 
 - Separate named accounts, optional bank/provider and account reference, one-time opening balance, optimistic settings updates, archive without deleting history.
 - Inter-account transfers excluded from aggregate cash flow.
-- Card settlement date and explicit fee; net bank balance, gross customer receipt and fee remain distinguishable. Unmatched payments are available across all months (oldest 200 first), including historical payments.
+- Card settlement date and explicit fee; net bank balance, gross customer receipt and fee remain distinguishable. Unmatched non-cash receipts are excluded from confirmed cash flow and account balances until mapped. Unmatched payments are available across all months (oldest 200 first), including historical payments.
 - Future payment timestamps rejected by the server and client.
 - Customer balances include approved Garage invoices after collection; unsold stock and unapproved service estimates are excluded. Staff can receive the final payment on a collected job. WhatsApp opens a draft for manual sending.
 - Manual expense payments can link to a stock purchase, stock preparation or service job. Reversals preserve the link and reduce paid cost totals; existing cash receipts are projected once, without copying them into the ledger.
