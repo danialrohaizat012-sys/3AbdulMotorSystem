@@ -1,8 +1,8 @@
-export type Vehicle={id:number;brand:string;model:string;year:number;plate:string;mileage:number;price:number;cost:number;prep:number;paid:number;buyer:string;status:string;published:number;photo:string;photos?:string[];description:string;inspection:string;createdAt:string;updatedAt:string;version?:number;supplier?:string;supplierPhone?:string;chassis?:string;buyerPhone?:string;prepItems?:string;duplicateReason?:string;soldAt?:string|null};
+export type Vehicle={id:number;stockNo?:number;brand:string;model:string;year:number;plate:string;mileage:number;price:number;cost:number;prep:number;paid:number;buyer:string;status:string;published:number;photo:string;photos?:string[];description:string;inspection:string;createdAt:string;updatedAt:string;version?:number;supplier?:string;supplierPhone?:string;chassis?:string;buyerPhone?:string;prepItems?:string;duplicateReason?:string;soldAt?:string|null};
 export type Line={name:string;kind:string;qty:number;rate:number;cost?:number|null};
 export type Job={id:number;customer:string;phone:string;bike:string;plate:string;mileage:number;complaint:string;notes:string;mechanic:string;status:string;items:string;paid:number;createdAt:string;updatedAt:string;version?:number;estimateStatus?:string;approvalNote?:string;approvedTotal?:number|null;noChargeReason?:string;creditReason?:string;creditApprovedBy?:string|null;creditApprovedAt?:string|null};
 export type Payment={id:number;requestId:string;vehicleId:number|null;jobId:number|null;amount:number;method:string;purpose:string;paidAt:string;note:string;reversesId:number|null;receiverName:string;createdAt:string};
-export type AuditEntry={id:number;recordKind:string;recordId:number;action:string;changedFields:string[];actorName:string;createdAt:string};
+export type AuditEntry={id:number;recordKind:string;recordId:number;stockNo?:number;action:string;changedFields:string[];actorName:string;createdAt:string};
 export type Overview={month:string;soldCount:number;sales:number;grossProfit:number;vehicleReceipts:number;serviceReceipts:number;vehicleOutstanding:number;serviceOutstanding:number};
 export const bikeStatuses:Record<string,string>={available:'Available',reserved:'Reserved',sold:'Sold'};
 export const jobStatuses:Record<string,string>={new:'Baharu',working:'Dalam kerja',ready:'Siap',collected:'Diserahkan'};
@@ -12,7 +12,7 @@ export const dateText=(s:string)=>s?new Date(s).toLocaleString('ms-MY',{timeZone
 export function parseLines(s:string):Line[]{try{const a=JSON.parse(s);return Array.isArray(a)?a:[]}catch{return []}}
 export const lineTotal=(lines:Line[])=>lines.reduce((s,l)=>s+l.qty*l.rate,0);
 export const total=(j:Pick<Job,'items'>)=>lineTotal(parseLines(j.items));
-export const vehicleId=(id:number)=>'3AM-'+String(id).padStart(4,'0');
+export const vehicleId=(id:number,stockNo?:number)=>'3AM-'+String(stockNo??id).padStart(4,'0');
 export const jobId=(id:number)=>'JOB-'+String(id).padStart(4,'0');
 export function paymentStatus(paid:number,amount:number){return amount===0?'Percuma':paid>=amount?'Dibayar penuh':paid>0?'Bayaran sebahagian':'Belum dibayar'}
 export const blankBike:Vehicle={id:0,brand:'',model:'',year:new Date().getFullYear(),plate:'',mileage:0,price:0,cost:0,prep:0,paid:0,buyer:'',buyerPhone:'',supplier:'',supplierPhone:'',chassis:'',prepItems:'[]',duplicateReason:'',status:'available',published:0,photo:'',photos:[],description:'',inspection:'[]',createdAt:'',updatedAt:'',version:1};
