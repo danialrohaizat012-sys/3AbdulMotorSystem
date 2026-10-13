@@ -1,5 +1,5 @@
 export type Vehicle={id:number;brand:string;model:string;year:number;plate:string;mileage:number;price:number;cost:number;prep:number;paid:number;buyer:string;status:string;published:number;photo:string;photos?:string[];description:string;inspection:string;createdAt:string;updatedAt:string;version?:number;supplier?:string;supplierPhone?:string;chassis?:string;buyerPhone?:string;prepItems?:string;duplicateReason?:string;soldAt?:string|null};
-export type Line={name:string;kind:string;qty:number;rate:number};
+export type Line={name:string;kind:string;qty:number;rate:number;cost?:number|null};
 export type Job={id:number;customer:string;phone:string;bike:string;plate:string;mileage:number;complaint:string;notes:string;mechanic:string;status:string;items:string;paid:number;createdAt:string;updatedAt:string;version?:number;estimateStatus?:string;approvalNote?:string;approvedTotal?:number|null;noChargeReason?:string;creditReason?:string;creditApprovedBy?:string|null;creditApprovedAt?:string|null};
 export type Payment={id:number;requestId:string;vehicleId:number|null;jobId:number|null;amount:number;method:string;purpose:string;paidAt:string;note:string;reversesId:number|null;receiverName:string;createdAt:string};
 export type AuditEntry={id:number;recordKind:string;recordId:number;action:string;changedFields:string[];actorName:string;createdAt:string};
