@@ -27,12 +27,13 @@ Tarikh: 13 Oktober 2026 (Malaysia). Projek: `jvmqpucsbeddusqrgsyt`. Website: htt
 | Staff Edge Function | PASS basic live gate | `manage-staff` ACTIVE; permintaan list tanpa token menghasilkan HTTP 401. Authorization/provisioning failure paths diuji dengan mocked Edge tests. Tiada akaun staff sebenar diwujudkan semasa audit. |
 | Catalogue live | PASS desktop | Satu stok sebenar, 5 foto, harga jualan/original/ansuran, professional icons, pagination satu halaman, New filter mengecualikan Pre-owned dan reset mengembalikan stok. |
 | Profil / galeri live | PASS desktop | Layout dua kolum, thumbnail fit, lightbox next 1/5→2/5, close kembali ke profil, WhatsApp bar visible. |
+| Pautan share live | PASS | `#catalogue?motor=32` terus membuka profil tanpa redirect login; ID asal kekal. |
 | Login routes live | PASS unauthenticated gate | Inventory, Garage, Accounting dan Staff memerlukan log masuk; tiada data dalaman dipaparkan kepada pelawat. |
 | PWA assets | PASS file review | Manifest standalone, scope root, start Inventory, icon 192×192, 512×512 dan Apple 180×180; HTTPS live. Install/relaunch sebenar pada iPhone/Android belum diuji. |
 | Phone UI | REVIEWED / UAT PENDING | CSS responsive disemak. Headless viewport automation tidak dapat berjalan kerana executable browser ujian tiada dan download gagal. Jangan tafsir sebagai phone UAT PASS. |
 | Owner browser E2E | UAT PENDING | Tiada sesi owner authenticated digunakan. Create/edit/save/upload/print melalui UI owner sebenar tidak disahkan hujung ke hujung; database dan domain tests lulus. |
 
-Semua SQL suites menggunakan transaction rollback. Perubahan profile, counter, accounting balance, storage metadata dan rekod synthetic dibatalkan. Semakan akhir mesti mengekalkan rekod sebenar: 1 vehicle, 1 catalogue, 0 jobs, 0 payments, 0 manual accounting entries; empat profile staff asal. Ujian INSERT boleh menggunakan nombor internal identity walaupun rollback; nombor paparan stock manusia menggunakan transactional counter dan kekal berurutan.
+Semua SQL suites menggunakan transaction rollback. Perubahan profile, counter, accounting balance, storage metadata dan rekod synthetic dibatalkan. Baseline awal: 1 vehicle, 1 catalogue, 0 jobs, 0 payments dan 0 manual accounting entries. Semakan akhir: 2 vehicles, 1 catalogue, 0 jobs, 0 payments, 0 manual accounting entries dan empat profile staff; tiada rekod synthetic tertinggal. Rekod stok kedua ditambah oleh inventory staff pada 13 Oktober 2026, 11:53:42 MYT, ketika audit berjalan. Rekod sebenar baharu ini dikekalkan; nombor paparan counter kini 2. Ujian INSERT boleh menggunakan nombor internal identity walaupun rollback; nombor paparan stock manusia menggunakan transactional counter dan kekal berurutan.
 
 ## Pembetulan semasa audit
 
