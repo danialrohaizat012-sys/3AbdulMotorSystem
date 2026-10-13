@@ -1,0 +1,2 @@
+export const CATALOGUE_PAGE_SIZE=10;
+export function cataloguePage<T>(items:T[],requested:number){const pages=Math.max(1,Math.ceil(items.length/CATALOGUE_PAGE_SIZE));const page=Math.min(pages,Math.max(1,Math.trunc(requested)||1));const start=(page-1)*CATALOGUE_PAGE_SIZE;return {page,pages,items:items.slice(start,start+CATALOGUE_PAGE_SIZE),start:items.length?start+1:0,end:Math.min(start+CATALOGUE_PAGE_SIZE,items.length),total:items.length}}
