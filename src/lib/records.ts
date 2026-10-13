@@ -6,10 +6,11 @@ import type {Vehicle,Job,Payment,AuditEntry,Overview} from './motor';
 import type {BusinessSettings} from './business';
 export function mapFields(row:Record<string,unknown>){const data:Record<string,unknown>={};for(const [k,v] of Object.entries(row))data[k.replace(/_([a-z])/g,(_,l:string)=>l.toUpperCase())]=['items','inspection','prep_items'].includes(k)?JSON.stringify(v):k==='published'?(v?1:0):v;return data}
 export const mapRow=(row:Record<string,unknown>)=>mapFields(row) as Vehicle|Job;
+const brandsCache=new RequestCache<string[]>(5*60_000);
 const recordCache=new RequestCache<(Vehicle|Job)[]>(30_000);
 const photoCache=new RequestCache<Record<string,string>>(45*60_000);
 const settingsCache=new RequestCache<BusinessSettings>(60_000);
-function clearCaches(){recordCache.clear();photoCache.clear();settingsCache.clear()}
+function clearCaches(){brandsCache.clear();recordCache.clear();photoCache.clear();settingsCache.clear()}
 supabase?.auth.onAuthStateChange(event=>{if(['SIGNED_IN','SIGNED_OUT','USER_UPDATED'].includes(event))clearCaches()});
 function client(){if(!supabase)throw Error('Sistem belum tersedia.');return supabase}
 export function photoKey(value:string){if(!value)return '';if(!value.startsWith('https://'))return value;const path=value.split('/vehicle-photos/')[1]?.split('?')[0];if(!path)throw Error('Foto tidak sah.');return decodeURIComponent(path)}
@@ -35,3 +36,7 @@ export async function loadOverview(){const {data,error}=await client().rpc('owne
 export async function loadAudit(){const {data,error}=await client().from('audit_log').select('id,record_kind,record_id,action,changed_fields,actor_name,created_at').order('id',{ascending:false}).limit(40);if(error)throw Error('Log perubahan belum dapat dimuatkan.');const ids=[...new Set(data.filter(r=>r.record_kind==='vehicles').map(r=>r.record_id))];const numbers=new Map<number,number>();if(ids.length){const {data:stock}=await client().from('vehicles').select('id,stock_no').in('id',ids);for(const v of stock||[])numbers.set(v.id,v.stock_no)}return data.map(r=>({...mapFields(r),stockNo:numbers.get(r.record_id)}) as AuditEntry)}
 
 export async function setCatalogueVisibility(record:Vehicle,published:boolean){const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),15_000);try{const {data,error}=await client().from('vehicles').update({published}).eq('id',record.id).eq('version',record.version??0).select('*').abortSignal(controller.signal).maybeSingle();if(controller.signal.aborted)throw Error('Sambungan terlalu lama. Tutup dan buka semula stok untuk semak status sebelum cuba lagi.');if(error)throw Error(errorMessage(error));if(!data)throw Error('Stok telah berubah. Tutup dan buka semula rekod sebelum cuba lagi.');recordCache.clear();return mapRow(data) as Vehicle}finally{window.clearTimeout(timer)}}
+
+export function normalizeBrand(name:string){return name.trim().replace(/\s+/g,' ').toUpperCase()}
+export async function loadBrands(force=false){if(force)brandsCache.clear();return brandsCache.get('brands',async()=>{const {data,error}=await client().from('vehicle_brands').select('name').order('name');if(error)throw Error('Senarai jenama gagal dimuatkan. Cuba semula.');return data.map(b=>b.name as string)})}
+export async function addBrand(name:string){const value=normalizeBrand(name);if(value.length<2||value.length>80)throw Error('Nama jenama mesti 2–80 aksara.');const {error}=await client().from('vehicle_brands').upsert({name:value},{onConflict:'name',ignoreDuplicates:true});if(error)throw Error(errorMessage(error));brandsCache.clear();return value}
