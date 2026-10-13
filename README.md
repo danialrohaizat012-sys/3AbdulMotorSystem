@@ -78,3 +78,7 @@ Scope: cashbook and operational receipt integration. Full profit-and-loss recogn
 ## Compact visits and footer links (13 October 2026)
 
 The catalogue visit estimate remains once per browser/day, displayed in a compact text row. The shared footer includes monochrome TikTok, Facebook, Maps and WhatsApp icons with 44px touch targets. Owner sets their HTTPS URLs through Inventory → Tetapan katalog → Pautan ikon footer. Empty links render as inactive icons; no business URL is guessed. The footer WhatsApp URL is independent of the vehicle enquiry phone/template. Public settings reads reuse the existing cache; footer updates propagate immediately on settings save. New URLs are validated in the browser and database, and link changes require the enabled owner role even if a staff member has WhatsApp-edit permission. Changes retain the existing settings version/audit behavior. Rollout SQL: `supabase/footer-links.sql`; rolled-back permission/URL regression: `tests/footer-links.sql`.
+
+## Delivery audit — 13 October 2026
+
+See `docs/audit-delivery-2026-10-13.md` for executed tests, the long accounting-reference fix, known limitations, owner setup and the final device UAT checklist. The current catalogue supports 10 records per display page, sorting, a customer gallery/lightbox, fixed contact actions, and owner-managed per-stock freegift descriptions. Inventory provides a public-layout preview without publishing the record. Tests use transaction rollback; never insert imaginary customer payments or opening balances for a production demonstration.
