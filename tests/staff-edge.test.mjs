@@ -11,3 +11,17 @@ test('ordinary, disabled and temporary users cannot manage access',async()=>{for
 test('owner account and owner role escalation are protected',async()=>{const s=setup({target:{id:'other-owner',role:'owner'}});assert.equal((await s.handler(request({action:'update',id:'other-owner',version:1,staff}))).status,403);const b=setup();assert.equal((await b.handler(request({action:'create',email:'test@example.com',password:'Temporary_Safe_2026',staff:{...staff,role:'owner'}}))).status,400);assert.equal(b.calls.some(c=>c[0]==='create'),false)});
 test('new staff Auth provisioning and atomic profile write use verified actor',async()=>{const s=setup();assert.equal((await s.handler(request({action:'create',email:'TEST@example.com',password:'Temporary_Safe_2026',staff}))).status,200);const auth=s.calls.find(c=>c[0]==='create');assert.equal(auth[1].email,'test@example.com');assert.equal(auth[1].email_confirm,true);const rpc=s.calls.find(c=>c[0]==='rpc');assert.equal(rpc[2].actor_id,'owner');assert.equal(rpc[2].target_id,'new-staff');assert.equal(rpc[2].expected_version,null);assert.equal('password' in rpc[2].details,false)});
 test('failed profile write rolls back only the newly provisioned account',async()=>{const s=setup({rpcError:Error('database offline')});assert.equal((await s.handler(request({action:'create',email:'test@example.com',password:'Temporary_Safe_2026',staff}))).status,500);assert.deepEqual(s.calls.find(c=>c[0]==='rollback'),['rollback','new-staff'])});
+
+test('owner can save independent accounting flags and old clients default to denied',async()=>{
+ const base={action:'update',id:'target',version:1,staff};
+ const old=setup();assert.equal((await old.handler(request(base))).status,200);
+ assert.equal(old.calls.find(c=>c[0]==='rpc')[2].details.permissions.accounting_view,false);
+ const next=setup();assert.equal((await next.handler(request({...base,staff:{...staff,permissions:{...staff.permissions,accounting_view:true,accounting_post:true,accounting_export:false}}}))).status,200);
+ assert.equal(next.calls.find(c=>c[0]==='rpc')[2].details.permissions.accounting_post,true);
+});
+test('accounting child permissions without view and nonboolean flags are rejected',async()=>{
+ for(const permissions of [{accounting_post:true},{accounting_export:true},{accounting_view:'true'}]){
+  const s=setup();assert.equal((await s.handler(request({action:'update',id:'target',version:1,staff:{...staff,permissions:{...staff.permissions,...permissions}}}))).status,400);
+  assert.equal(s.calls.some(c=>c[0]==='rpc'),false);
+ }
+});

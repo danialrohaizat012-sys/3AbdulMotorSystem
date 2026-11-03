@@ -3,7 +3,7 @@ import {useState,useEffect,useCallback} from 'react';
 import {loadRecords,getRecord,loadSettings,setCatalogueVisibility,photoPaths,signPhotos} from '@/lib/records';
 import {VisitorCounter} from './visitor-counter';
 import {MotorFooter} from './motor-footer';
-import {can} from '@/lib/staff';
+import {can,canAccess} from '@/lib/staff';
 import type {StaffProfile} from '@/lib/staff';
 import {CatalogueProfile} from './catalogue-profile';
 import {cataloguePage} from '@/lib/catalogue-page';
@@ -35,7 +35,7 @@ export default function MotorApp({mode,staffProfile=null}:{mode:Mode;staffProfil
  const [publishing,setPublishing]=useState<number|null>(null);const [publishError,setPublishError]=useState('');
  const [demo,setDemo]=useState(false);const owner=staffProfile?.role==='owner';const staff=staffProfile;const [settings,setSettings]=useState<BusinessSettings|null>(null);
  useEffect(()=>{void loadSettings().then(setSettings).catch(()=>{});},[]);
- const navigation=owner?[...nav,{mode:'accounting',href:'#accounting',label:'Accounting',icon:BookOpen},{mode:'staff',href:'#staff',label:'Akses staf',icon:ShieldCheck}]:nav;const editable=can(staff,mode==='garage'?'garage_edit':'inventory_edit');
+ const navigation=[...nav,...(canAccess(staff,'accounting')?[{mode:'accounting',href:'#accounting',label:'Accounting',icon:BookOpen}]:[]),...(owner?[{mode:'staff',href:'#staff',label:'Akses staf',icon:ShieldCheck}]:[])];const editable=can(staff,mode==='garage'?'garage_edit':'inventory_edit');
  const kind=mode==='garage'?'jobs':mode==='inventory'?'vehicles':'catalogue';
  const load=useCallback(async(force=false)=>{setLoading(true);try{setRecords(await loadRecords(kind,force));setError('');}catch(e){setError(e instanceof Error?e.message:'Rekod gagal dimuatkan.');}finally{setLoading(false)}},[kind]);useEffect(()=>{void load()},[load]);
  async function publishStock(v:Vehicle){if(publishing!==null)return;setPublishing(v.id);setPublishError('');try{const fresh=await setCatalogueVisibility(v,!v.published);setDetail(old=>old&&'brand'in old&&old.id===v.id?fresh:old);toast.success(fresh.published?'Stok dipaparkan di katalog.':'Stok disembunyikan daripada katalog.');await load(true)}catch(e){const message=(e as Error).message;setPublishError(message);toast.error(message)}finally{setPublishing(null)}}
