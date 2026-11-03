@@ -23,6 +23,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: node --test tests/*.test.mjs
       - run: pnpm build
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
