@@ -1,9 +1,10 @@
 import {supabase,getStaff} from './supabase';
 import {RequestCache} from './request-cache';
 import {preparePhoto} from './photo';
+import {loadStockNumbers} from './records';
 export type AccountingKind='income'|'expense'|'capital'|'drawings'|'transfer'|'adjustment';
 export type CashAccount=string;
-export type AccountingEntry={source_key:string;source_id:number;source:'Manual'|'Inventori'|'Garaj';entry_date:string;kind:AccountingKind;amount:number;account_id:CashAccount|null;to_account_id:CashAccount|null;category:string;description:string;counterparty:string;reference:string;note:string;created_at:string;created_by:string;vehicle_id:number|null;job_id:number|null;reversal_of:number|null;voided:boolean;reviewed:boolean;version:number;receipt_count:number;fee_amount?:number;settled_on?:string|null;received_on?:string|null;receipt_exemption?:string;cost_scope?:string;payment_method?:string};
+export type AccountingEntry={source_key:string;source_id:number;source:'Manual'|'Inventori'|'Garaj';entry_date:string;kind:AccountingKind;amount:number;account_id:CashAccount|null;to_account_id:CashAccount|null;category:string;description:string;counterparty:string;reference:string;note:string;created_at:string;created_by:string;vehicle_id:number|null;stock_no?:number|null;job_id:number|null;reversal_of:number|null;voided:boolean;reviewed:boolean;version:number;receipt_count:number;fee_amount?:number;settled_on?:string|null;received_on?:string|null;receipt_exemption?:string;cost_scope?:string;payment_method?:string};
 export type AccountingAccount={id:CashAccount;name:string;opening_balance:number|null;opening_on:string|null;balance:number|null;account_type:'cash'|'bank'|'ewallet';bank_name:string;account_number:string;active:boolean;version:number;has_activity?:boolean};
 export type Reconciliation={id:string;account_id:string;statement_on:string;statement_balance:number;system_balance:number|null;difference:number|null;note:string};
 export type AccountingSnapshot={asOf:string;accounts:AccountingAccount[];summary:{income:number;expense:number;net:number;capital:number;drawings:number;refunds:number;adjustments:number;fees:number};unassignedTotal:number;unassignedCount:number;pendingCount:number;unmatched?:AccountingEntry[];reconciliations:Reconciliation[];audit:{id:number;table_name:string;record_key:string;action:string;actor:string;created_at:string}[]};
@@ -17,7 +18,8 @@ supabase?.auth.onAuthStateChange(()=>cache.clear());
 export async function loadAccounting(month:string,force=false){if(force)cache.clear();if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Bulan tidak sah.');return cache.get(month,async()=>{
  const {data:snapshot,error}=await client().rpc('accounting_snapshot',{p_month:month+'-01'});if(error)throw Error(message(error));
  const entries:AccountingEntry[]=[];for(let offset=0;;offset+=200){const {data,error}=await client().rpc('accounting_feed_v2',{p_month:month+'-01',p_before:snapshot.asOf}).range(offset,offset+199);if(error)throw Error(message(error));entries.push(...(data as AccountingEntry[]));if(data.length<200)break;}
- return {snapshot:snapshot as AccountingSnapshot,entries};
+ const numbers=await loadStockNumbers(entries.filter(e=>e.cost_scope&&e.vehicle_id).map(e=>e.vehicle_id!));
+ return {snapshot:snapshot as AccountingSnapshot,entries:entries.map(e=>e.vehicle_id?{...e,stock_no:numbers.get(e.vehicle_id)}:e)};
 })}
 export async function postEntry(requestId:string,input:EntryInput){const {data,error}=await client().rpc('accounting_post',{p_request:requestId,p_data:input});if(error)throw Error(message(error));cache.clear();window.dispatchEvent(new Event('3am-operations-changed'));return data as number}
 export async function reverseEntry(e:AccountingEntry,requestId:string,date:string,reason:string){if(e.source!=='Manual')throw Error('Refund pelanggan perlu direkodkan melalui rekod Inventori atau Garage asal.');const {data,error}=await client().rpc('accounting_reverse',{p_id:e.source_id,p_request:requestId,p_date:date,p_reason:reason});if(error)throw Error(message(error));cache.clear();window.dispatchEvent(new Event('3am-operations-changed'));return data as number}
