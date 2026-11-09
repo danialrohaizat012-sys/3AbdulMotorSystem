@@ -186,7 +186,7 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .catalogue-workspace .bike-card{border-radius:18px;border-color:#303e48;background:#151f28;box-shadow:0 8px 24px #0002;overflow:hidden}
 .catalogue-workspace .photo-button{display:block;width:100%;padding:0;background:#101820}
 .catalogue-workspace .bike-photo{aspect-ratio:4/3;border-radius:0;background:#101820}
-.catalogue-workspace .bike-photo>img{display:block;object-fit:contain!important;border-radius:0;width:100%;height:100%}
+.catalogue-workspace .bike-photo>img{display:block;object-fit:cover!important;border-radius:0;width:100%;height:100%}
 .catalogue-workspace .bike-photo .status{top:14px;left:14px;padding:5px 10px;font-size:10px;border-radius:999px;letter-spacing:.04em}
 .catalogue-workspace .catalogue-photo-count{right:14px;bottom:14px;padding:4px 8px;border-radius:999px;font-size:10px;background:#101820e8}
 .catalogue-workspace .bike-info{padding:18px 20px 20px}
