@@ -210,3 +210,31 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .catalogue-workspace .bike-bottom .btn:hover{background:#f4d586;border-color:#f4d586}
 .catalogue-workspace .bike-bottom .btn svg{width:18px!important;height:18px!important;flex:none}
 @media(max-width:620px){.catalogue-workspace .bike-grid{gap:18px}.catalogue-workspace .bike-info{padding:16px 18px 18px}.catalogue-workspace .bike-info h3{font-size:21px}.catalogue-workspace .bike-specs{gap:10px;margin:11px 0 15px}.catalogue-workspace .compact-selling{font-size:28px}.catalogue-workspace .bike-bottom{gap:14px}}
+/* Phone catalogue (≤620px): compact horizontal cards so 3–4 motorcycles fit per screen
+   instead of one tall card. Photo left, key facts and price right; whole card stays tappable. */
+@media(max-width:620px){
+.catalogue-workspace .bike-grid{grid-template-columns:1fr;gap:12px}
+.catalogue-workspace .bike-card{display:grid;grid-template-columns:minmax(0,42%) minmax(0,1fr);border-radius:14px;box-shadow:none}
+.catalogue-workspace .photo-button{height:100%;min-height:150px;background:#101820}
+.catalogue-workspace .bike-photo{aspect-ratio:auto;height:100%!important;min-height:150px;border-radius:0}
+.catalogue-workspace .bike-photo>img{object-fit:contain!important;border-radius:0}
+.catalogue-workspace .bike-photo .status{top:8px;left:8px;font-size:10px;padding:3px 8px}
+.catalogue-workspace .catalogue-photo-count{right:8px;bottom:8px;padding:2px 7px;font-size:10px}
+.catalogue-workspace .bike-info{padding:11px 12px;display:flex;flex-direction:column;min-width:0}
+.catalogue-workspace .bike-meta{margin-bottom:2px;font-size:10px}
+.catalogue-workspace .bike-meta>span:last-child{padding:1px 5px;font-size:9px}
+.catalogue-workspace .bike-info h3{font-size:18px;line-height:1.2;overflow-wrap:anywhere}
+.catalogue-workspace .bike-specs{margin:6px 0 8px;gap:5px;font-size:11px}
+.catalogue-workspace .bike-specs>span{padding:2px 6px;font-size:11px;gap:4px}
+.catalogue-workspace .bike-specs svg{width:12px;height:12px}
+.catalogue-workspace .bike-bottom{gap:6px;margin-top:auto}
+.catalogue-workspace .compact-selling{font-size:20px}
+.catalogue-workspace .compact-original del{font-size:12px}
+.catalogue-workspace .compact-monthly{font-size:12px;margin:0}
+.catalogue-workspace .compact-terms{display:none}
+.catalogue-workspace .bike-bottom .btn{min-height:38px;padding:6px 10px;font-size:13px;border-radius:8px}
+.catalogue-hero{padding:26px 20px!important}
+.catalogue-hero h1{font-size:34px!important}
+.catalogue-hero p{font-size:15px}
+}
+@media(max-width:360px){.catalogue-workspace .bike-card{grid-template-columns:minmax(0,38%) minmax(0,1fr)}.catalogue-workspace .bike-specs>span:nth-child(3){display:none}}
