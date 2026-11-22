@@ -7,7 +7,7 @@ insert into auth.users(id) values
 ('a0000000-0000-4000-8000-000000000003'),('a0000000-0000-4000-8000-000000000004');
 insert into public.staff(id,display_name,role,permissions,payment_limit) values
 ('a0000000-0000-4000-8000-000000000001','POS owner','owner','{}',null),
-('a0000000-0000-4000-8000-000000000002','POS cashier','garage','{"pos_sell":true}',null),
+('a0000000-0000-4000-8000-000000000002','POS cashier','garage','{"pos_sell":true}',100),
 ('a0000000-0000-4000-8000-000000000003','POS manager','inventory','{"pos_sell":true,"pos_manage":true}',null),
 ('a0000000-0000-4000-8000-000000000004','No POS staff','garage','{"garage_edit":true,"receive_payments":true}',null);
 set local role authenticated;
@@ -128,6 +128,26 @@ do $$declare a bigint:=(select id from public.pos_products where sku='OIL-10W40'
  if (select total from public.pos_sales where id=s)<>3000 then raise exception 'FAIL manager discount';end if;
  update public.pos_products set price=2800 where id=a;
  if (select row(price,version) from public.pos_products where id=a)<>row(2800::bigint,ver+1) then raise exception 'FAIL manager price edit';end if;
+end$$;
+-- Regression: voiding after stock tracking was turned off, and cash void with no open drawer.
+select set_config('request.jwt.claim.sub','a0000000-0000-4000-8000-000000000003',true);
+do $$declare b bigint;s bigint;begin
+ insert into public.pos_products(sku,name,price) values('SOLDOUT-1','Habis stok',1000) returning id into b;
+ insert into public.pos_stock_moves(request_id,product_id,qty,kind,note) values(gen_random_uuid(),b,1,'receive','UAT');
+ s:=public.pos_checkout(gen_random_uuid(),jsonb_build_object('lines',jsonb_build_array(jsonb_build_object('product_id',b,'qty',1,'unit_price',1000)),'payments','[{"method":"cash","amount":1000}]'::jsonb));
+ set constraints public.pos_sales_complete immediate;set constraints public.pos_sales_complete deferred;
+ update public.pos_products set track_stock=false where id=b;
+ update public.pos_shifts set closed_at=now(),counted_cash=expected_cash_probe.v,note='UAT close' from (select coalesce(sum(p.amount),0)+(select opening_float from public.pos_shifts where closed_at is null) v from public.payments p where p.sale_id is not null and p.method='cash' and p.created_at>=(select opened_at from public.pos_shifts where closed_at is null)) expected_cash_probe where closed_at is null;
+ insert into pos_t values('untracked',s);
+end$$;
+select set_config('request.jwt.claim.sub','a0000000-0000-4000-8000-000000000001',true);
+do $$declare s bigint:=(select v from pos_t where k='untracked');begin
+ if exists(select 1 from public.pos_shifts where closed_at is null) then raise exception 'FAIL setup: drawer still open';end if;
+ perform public.pos_void_sale(s,'Pelanggan pulangkan barang');
+ set constraints public.pos_sales_complete immediate;set constraints public.pos_sales_complete deferred;
+ if (select status from public.pos_sales where id=s)<>'voided' then raise exception 'FAIL void untracked';end if;
+ if not exists(select 1 from public.pos_shifts where closed_at is null) then raise exception 'FAIL cash void opened no drawer';end if;
+ -- (expected cash itself is time-window based; in one test transaction every now() is equal, so it is not asserted here)
 end$$;
 reset role;
 set local role anon;

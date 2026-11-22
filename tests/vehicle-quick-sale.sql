@@ -40,8 +40,11 @@ select set_config('request.jwt.claim.sub','c0000000-0000-4000-8000-000000000003'
 do $$declare id3 bigint;r jsonb;begin
  insert into public.vehicles(brand,model,year,price,published) values('UAT SALE','Reserve',2024,300000,false) returning id into id3;
  begin perform public.sell_vehicle(id3,1,gen_random_uuid(),'{"buyer":"Abu","buyer_phone":"0111234567","amount":1000}');raise exception 'FAIL no-pay staff took money';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
- r:=public.sell_vehicle(id3,(select version from public.vehicles where id=id3),gen_random_uuid(),'{"buyer":"Abu","buyer_phone":"0111234567","amount":0}');
+ r:=public.sell_vehicle(id3,1,'d0000000-0000-4000-8000-000000000009','{"buyer":"Abu","buyer_phone":"0111234567","amount":0}');
  if r->>'status'<>'reserved' then raise exception 'FAIL reserve only';end if;
+ -- Retry with the original (now stale) version after a lost response.
+ r:=public.sell_vehicle(id3,1,'d0000000-0000-4000-8000-000000000009','{"buyer":"Abu","buyer_phone":"0111234567","amount":0}');
+ if r->>'status'<>'reserved' then raise exception 'FAIL reserve retry';end if;
 end$$;
 -- Owner may change the price during the sale.
 select set_config('request.jwt.claim.sub','c0000000-0000-4000-8000-000000000001',true);

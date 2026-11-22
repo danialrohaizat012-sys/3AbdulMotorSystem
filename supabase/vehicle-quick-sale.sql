@@ -14,15 +14,17 @@ begin
   v_amount:=coalesce((p_data->>'amount')::bigint,0);
   if v_amount<0 then raise exception 'Amaun bayaran tidak sah.';end if;
   if v_amount>0 and not private.staff_can('receive_payments') then raise exception 'Anda tidak dibenarkan menerima bayaran. Pilih "Tempah sahaja" atau minta owner merekodkan bayaran.';end if;
-  select * into v from public.vehicles where id=p_vehicle for update;
-  if v.id is null then raise exception 'Stok tidak dijumpai atau akses tidak dibenarkan.';end if;
-  if v.version<>p_version then raise exception 'Stok telah berubah oleh staf lain. Tutup dan buka semula rekod.';end if;
-  if v.status='sold' then raise exception 'Motosikal ini sudah dijual.';end if;
   v_buyer:=trim(coalesce(p_data->>'buyer',''));
   v_phone:=regexp_replace(coalesce(p_data->>'buyer_phone',''),'[^0-9]','','g');
   if left(v_phone,1)='0' then v_phone:='60'||substr(v_phone,2);end if;
   if length(v_buyer) not between 2 and 120 then raise exception 'Isi nama pembeli.';end if;
   if v_phone!~'^[1-9][0-9]{8,14}$' then raise exception 'Isi nombor telefon pembeli yang sah.';end if;
+  select * into v from public.vehicles where id=p_vehicle for update;
+  if v.id is null then raise exception 'Stok tidak dijumpai atau akses tidak dibenarkan.';end if;
+  -- Reserve-only has no payment row; a retry of an already saved reservation is a success.
+  if v_amount=0 and v.status='reserved' and v.buyer=v_buyer and v.buyer_phone=v_phone then return jsonb_build_object('status',v.status,'paid',v.paid,'price',v.price,'balance',v.price-v.paid,'payment_id',null,'version',v.version);end if;
+  if v.version<>p_version then raise exception 'Stok telah berubah oleh staf lain. Tutup dan buka semula rekod.';end if;
+  if v.status='sold' then raise exception 'Motosikal ini sudah dijual.';end if;
   v_price:=coalesce((p_data->>'price')::bigint,v.price);
   if v_price<=0 then raise exception 'Masukkan harga jualan.';end if;
   update public.vehicles set buyer=v_buyer,buyer_phone=v_phone,price=v_price,status='reserved' where id=p_vehicle;

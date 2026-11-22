@@ -102,10 +102,11 @@ function Products({products,loading,manager,onChanged}:{products:PosProduct[];lo
 }
 
 function ProductEditor({initial,onClose,onSaved}:{initial:PosProduct;onClose:()=>void;onSaved:()=>void}){
- const [p,setP]=useState(initial);const [opening,setOpening]=useState(0);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [moves,setMoves]=useState<PosMove[]>([]);
+ const [p,setP]=useState(initial);const [opening,setOpening]=useState(0);const created=useRef<PosProduct|null>(null);const openingRequest=useRef(crypto.randomUUID());const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [moves,setMoves]=useState<PosMove[]>([]);
  useEffect(()=>{if(initial.id&&initial.trackStock)void loadMoves(initial.id).then(setMoves).catch(()=>{})},[initial]);
  const set=<K extends keyof PosProduct>(k:K,v:PosProduct[K])=>setP(x=>({...x,[k]:v}));
- async function save(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{if(!p.sku.trim()||!p.name.trim())throw Error('Isi SKU dan nama produk.');const saved=await saveProduct(p);if(!initial.id&&saved.trackStock&&opening>0)await stockMove(saved.id,'receive',opening,'Stok awal',saved.cost,crypto.randomUUID());toast.success('Produk disimpan.');onSaved()}catch(e){setError(errorText(e))}finally{setBusy(false)}}
+ async function save(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{if(!p.sku.trim()||!p.name.trim())throw Error('Isi SKU dan nama produk.');// A retry after the product was created only records the opening stock.
+  const saved=created.current??await saveProduct(p);if(!initial.id)created.current=saved;if(!initial.id&&saved.trackStock&&opening>0)await stockMove(saved.id,'receive',opening,'Stok awal',saved.cost,openingRequest.current);toast.success('Produk disimpan.');onSaved()}catch(e){setError(errorText(e))}finally{setBusy(false)}}
  return <Dialog open onOpenChange={o=>{if(!o&&!busy)onClose()}}><DialogContent className="motor-dialog"><DialogHeader><DialogTitle>{initial.id?'Edit produk':'Produk baharu'}</DialogTitle><DialogDescription>Harga dalam RM. Stok berubah melalui jualan, terimaan atau pelarasan sahaja.</DialogDescription></DialogHeader>
   <form onSubmit={save}><Field label="Nama produk"><input required autoFocus maxLength={120} value={p.name} onChange={e=>set('name',e.target.value)}/></Field>
    <div className="form-grid"><Field label="SKU / kod"><input required maxLength={40} value={p.sku} onChange={e=>set('sku',e.target.value.toUpperCase().replace(/\s/g,'-'))} placeholder="cth. OIL-10W40"/></Field><Field label="Barcode (pilihan)"><input maxLength={64} inputMode="numeric" value={p.barcode} onChange={e=>set('barcode',e.target.value.trim())} placeholder="Scan di sini"/></Field>

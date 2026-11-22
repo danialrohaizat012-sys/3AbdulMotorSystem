@@ -19,11 +19,14 @@ const localNow=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezone
 /** Prominent entry point on an unsold stock record. */
 export function SaleCallToAction({vehicle,staff,onSold}:{vehicle:Vehicle;staff:StaffProfile|null;onSold:()=>Promise<void>}){
  const [open,setOpen]=useState(false);
- if(vehicle.status==='sold')return <section className="sale-cta sold"><BadgeCheck size={20}/><div><b>Sudah dijual</b><p>{vehicle.buyer}{vehicle.soldAt?' · '+new Date(vehicle.soldAt).toLocaleDateString('ms-MY',{timeZone:'Asia/Kuala_Lumpur'}):''}</p></div></section>;
+ // The dialog stays mounted across the record refresh so the print step is not lost after a sale.
+ const dialog=open&&<VehicleSaleDialog vehicle={vehicle} staff={staff} onClose={()=>setOpen(false)} onDone={onSold}/>;
+ // The dialog sits in the same position in both branches so React keeps its state when the status flips to Sold.
+ if(vehicle.status==='sold')return <><section className="sale-cta sold"><BadgeCheck size={20}/><div><b>Sudah dijual</b><p>{vehicle.buyer}{vehicle.soldAt?' · '+new Date(vehicle.soldAt).toLocaleDateString('ms-MY',{timeZone:'Asia/Kuala_Lumpur'}):''}</p></div></section>{dialog}</>;
  const balance=vehicle.price-vehicle.paid;const reserved=vehicle.status==='reserved'&&!!vehicle.buyer;
- return <section className="sale-cta"><HandCoins size={20}/><div><b>{reserved?'Ditempah oleh '+vehicle.buyer:'Sedia untuk dijual'}</b><p>{vehicle.paid>0?'Dibayar '+money(vehicle.paid)+' · Baki '+money(balance):'Harga '+money(vehicle.price)}</p></div>
+ return <><section className="sale-cta"><HandCoins size={20}/><div><b>{reserved?'Ditempah oleh '+vehicle.buyer:'Sedia untuk dijual'}</b><p>{vehicle.paid>0?'Dibayar '+money(vehicle.paid)+' · Baki '+money(balance):'Harga '+money(vehicle.price)}</p></div>
   <button className="btn primary" disabled={!can(staff,'inventory_edit')||vehicle.price<=0} onClick={()=>setOpen(true)}>{reserved?'Terima baki & jual':'Jual motor'}</button>
-  {open&&<VehicleSaleDialog vehicle={vehicle} staff={staff} onClose={()=>setOpen(false)} onDone={onSold}/>}</section>;
+  </section>{dialog}</>;
 }
 
 export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicle;staff:StaffProfile|null;onClose:()=>void;onDone:()=>Promise<void>}){

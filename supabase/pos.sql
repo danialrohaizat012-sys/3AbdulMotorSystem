@@ -161,6 +161,20 @@ create function private.pos_cash_between(p_from timestamptz,p_to timestamptz) re
 $$;
 create trigger pos_shifts_guard before insert or update on public.pos_shifts for each row execute function private.guard_pos_shift();
 
+-- Returns the open drawer, opening one with RM0 float if needed. Safe when two staff start at once.
+create function private.pos_open_shift() returns bigint language plpgsql security invoker set search_path='' as $$
+declare v bigint;
+begin
+ select id into v from public.pos_shifts where closed_at is null;
+ if v is null then
+  begin insert into public.pos_shifts(opening_float) values(0) returning id into v;
+  exception when unique_violation then select id into v from public.pos_shifts where closed_at is null;end;
+ end if;
+ return v;
+end;$$;
+revoke all on function private.pos_open_shift() from public,anon;
+grant execute on function private.pos_open_shift() to authenticated;
+
 create function private.guard_pos_sale() returns trigger language plpgsql security invoker set search_path='' as $$
 declare ledger bigint; owner boolean; open_shift bigint;
 begin
@@ -203,7 +217,11 @@ begin
  select exists(select 1 from
   (select l.product_id,sum(l.qty) q from public.pos_sale_lines l join public.pos_products p on p.id=l.product_id where l.sale_id=s.id and p.track_stock group by l.product_id) l
   full join (select product_id,sum(qty) m from public.pos_stock_moves where sale_id=s.id group by product_id) mv on mv.product_id=l.product_id
-  where coalesce(mv.m,0)<>case when s.status='completed' then -coalesce(l.q,0) else 0 end) into mismatch;
+  where s.status='completed' and coalesce(mv.m,0)<>-coalesce(l.q,0)) into mismatch;
+ -- A void returns stock for every product still tracked; untracked products keep their original sale move.
+ if not mismatch and s.status='voided' then
+  select exists(select 1 from public.pos_stock_moves m join public.pos_products p on p.id=m.product_id where m.sale_id=s.id and p.track_stock group by m.product_id having sum(m.qty)<>0) into mismatch;
+ end if;
  if mismatch then raise exception 'Pergerakan stok jualan tidak sepadan.';end if;
  return null;
 end;$$;
@@ -282,7 +300,8 @@ begin
  if NEW.sale_id is not null then
   if not private.staff_can('pos_sell') then raise exception 'Anda tidak dibenarkan merekod jualan kaunter.';end if;
  elsif not private.staff_can('receive_payments') then raise exception 'Anda tidak dibenarkan menerima bayaran.';end if;
- if NEW.amount>0 and exists(select 1 from public.staff where id=auth.uid() and role<>'owner' and payment_limit is not null and NEW.amount>payment_limit) then raise exception 'Amaun melebihi had bayaran staf. Minta owner merekodkan transaksi ini.';end if;
+ -- The per-transaction staff limit governs Inventory/Garage receipts; counter sales are governed by pos_sell.
+ if NEW.amount>0 and NEW.sale_id is null and exists(select 1 from public.staff where id=auth.uid() and role<>'owner' and payment_limit is not null and NEW.amount>payment_limit) then raise exception 'Amaun melebihi had bayaran staf. Minta owner merekodkan transaksi ini.';end if;
  if role_name is null then raise exception 'Akses staf diperlukan.';end if;
  NEW.created_by:=auth.uid();NEW.created_at:=now();
  if NEW.vehicle_id is not null then
@@ -371,8 +390,7 @@ begin
  v_tendered:=(p_data->>'cash_tendered')::bigint;
  if v_cash>0 and v_tendered is not null and v_tendered<v_cash then raise exception 'Tunai diterima kurang daripada bayaran tunai.';end if;
  -- Staff never need a separate step: the first sale opens the drawer with RM0 float.
- select id into v_shift from public.pos_shifts where closed_at is null;
- if v_shift is null then insert into public.pos_shifts(opening_float) values(0) returning id into v_shift;end if;
+ v_shift:=private.pos_open_shift();
  insert into public.pos_sales(request_id,shift_id,customer_name,customer_phone,note,subtotal,discount,total,cash_tendered,change_given,created_by)
   values(p_request,v_shift,coalesce(p_data->>'customer_name',''),coalesce(p_data->>'customer_phone',''),coalesce(p_data->>'note',''),v_subtotal,v_discount,v_total,case when v_cash>0 then coalesce(v_tendered,v_cash) end,case when v_cash>0 then coalesce(v_tendered,v_cash)-v_cash else 0 end,auth.uid())
   returning id into v_sale;
@@ -395,11 +413,14 @@ begin
  select * into s from public.pos_sales where id=p_sale for update;
  if s.id is null then raise exception 'Jualan tidak dijumpai.';end if;
  if s.status='voided' then return;end if;
+ -- Cash refunds leave the drawer that is open now, so it must exist to be counted at close.
+ if exists(select 1 from public.payments where sale_id=p_sale and method='cash' and amount>0) then perform private.pos_open_shift();end if;
  for p in select o.id,o.amount+coalesce((select sum(r.amount) from public.payments r where r.reverses_id=o.id),0) remaining,o.method from public.payments o where o.sale_id=p_sale and o.amount>0 order by o.id loop
   if p.remaining>0 then insert into public.payments(request_id,sale_id,amount,method,purpose,note,reverses_id,created_by) values(gen_random_uuid(),p_sale,-p.remaining,p.method,'refund','Batal jualan: '||trim(p_reason),p.id,auth.uid());end if;
  end loop;
  update public.pos_sales set status='voided',void_reason=trim(p_reason) where id=p_sale;
- for l in select product_id,qty from public.pos_sale_lines where sale_id=p_sale and product_id is not null and exists(select 1 from public.pos_stock_moves m where m.sale_id=p_sale and m.product_id=pos_sale_lines.product_id and m.kind='sale') loop
+ for l in select product_id,qty from public.pos_sale_lines where sale_id=p_sale and product_id is not null and exists(select 1 from public.pos_stock_moves m where m.sale_id=p_sale and m.product_id=pos_sale_lines.product_id and m.kind='sale')
+  and exists(select 1 from public.pos_products pp where pp.id=pos_sale_lines.product_id and pp.track_stock) loop
   insert into public.pos_stock_moves(request_id,product_id,qty,kind,sale_id,note,created_by) values(gen_random_uuid(),l.product_id,l.qty,'void',p_sale,'Batal jualan',auth.uid());
  end loop;
 end;$$;
