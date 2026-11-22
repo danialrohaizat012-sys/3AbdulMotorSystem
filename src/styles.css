@@ -238,3 +238,20 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .catalogue-hero p{font-size:15px}
 }
 @media(max-width:360px){.catalogue-workspace .bike-card{grid-template-columns:minmax(0,38%) minmax(0,1fr)}.catalogue-workspace .bike-specs>span:nth-child(3){display:none}}
+/* One-step motorcycle sale */
+.sale-cta{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:14px;border:1px solid #ffd21c66;background:#2a2610;border-radius:12px}
+.sale-cta>svg{color:#ffd21c;flex:none}.sale-cta>div{flex:1;min-width:0}.sale-cta p{color:#c9ccd1;font-size:13px}
+.sale-cta.sold{border-color:#2f6b45;background:#13261b}.sale-cta.sold>svg{color:#7ddc95}
+.sale-choice{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.sale-choice button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;padding:9px 11px;border-radius:10px;border:1px solid #393e45;background:#24282d;color:#f5f5f5;text-align:left}
+.sale-choice button small{color:#aeb3bb;font-size:12px}.sale-choice button.active{border-color:#ffd21c;background:#3a3412}.sale-choice button.active small{color:#f1e3a6}
+.sale-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.sale-methods button{min-height:46px;border-radius:9px;border:1px solid #393e45;background:#24282d;color:#f5f5f5;font-weight:700}
+.sale-methods button.active{background:#ffd21c;border-color:#ffd21c;color:#141414}
+.sale-more{background:none;border:0;padding:6px 0;font-size:13px;color:#c2c6cd;text-decoration:underline}
+.sale-price{margin:12px 0 0}.sale-price b{font-size:20px;color:#ffd21c;margin-left:6px}
+.sale-summary{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:14px 0;padding:12px 14px;border-radius:10px;background:#24282d}
+.sale-summary span{color:#aeb3bb;font-size:13px}.sale-summary.done{background:#183223}.sale-summary.done b{color:#7ddc95}
+.sale-submit{width:100%;min-height:54px!important;font-size:16px!important}
+.sale-done{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:10px 0}.sale-done>svg{color:#7ddc95}.sale-done b{font-size:18px}.sale-done .action-row{justify-content:center;margin-top:12px}
+@media(max-width:520px){.sale-cta{flex-wrap:wrap}.sale-cta .btn{width:100%}.sale-choice{grid-template-columns:1fr}.sale-choice button{min-height:48px;flex-direction:row;justify-content:space-between;align-items:center}}
