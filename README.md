@@ -106,3 +106,12 @@ Database rules (`supabase/pos.sql`, SECURITY INVOKER throughout): stock quantity
 Rollout order: confirm `staff-accounting-access.sql` is applied, apply `supabase/pos.sql`, redeploy `supabase/functions/manage-staff` (it now accepts `pos_sell`/`pos_manage`), then deploy the frontend. Validation: `node --test tests/*.test.mjs`, `pnpm build`, and `PGLITE_MODULE=… node tests/run-pos-sql.mjs` (applies all 21 migrations to in-memory PostgreSQL and runs `tests/pos.sql` + `tests/staff-accounting-access.sql`, rolled back). Not tested: production Auth/PostgREST, real printers and barcode scanners.
 
 Not in this phase: garage job parts deducting POS stock, partial returns (void is whole-sale), purchase orders/suppliers, SST invoices.
+
+## Invois, jualan satu langkah, katalog telefon & SEO (22 November 2026) — pending production rollout
+
+- **Invois profesional:** invois, anggaran dan resit menggunakan satu reka bentuk A4 (cetak dan PDF servis vektor). Owner mengisi **Maklumat invois** (nama, SSM, alamat, telefon, e-mel, bank, terma) — `supabase/invoice-profile.sql`; staf boleh baca, owner sahaja ubah, tidak boleh dibaca anon. Sebelum migrasi, invois guna nama kedai dan nombor WhatsApp katalog.
+- **Jual motor satu langkah:** butang **Jual motor** pada rekod stok — pembeli, bayar penuh / deposit / tempah sahaja, kaedah bayaran — dalam satu transaksi (`supabase/vehicle-quick-sale.sql`, RPC `sell_vehicle`, invoker). Semua guard sedia ada kekal. Sebelum migrasi, dialog menggunakan langkah lama secara automatik.
+- **Katalog telefon:** bahagian atas dipadatkan; kad motor pertama kelihatan dalam skrin pertama (iPhone 13: dari 1046px ke 436px).
+- **SEO:** tajuk & meta description, canonical, Open Graph/Twitter (`og-image.jpg`), `robots.txt`, `sitemap.xml`, data berstruktur `MotorcycleDealer` + `ItemList` stok awam (harga, keadaan, jarak — tiada data peribadi), tajuk halaman ikut motosikal yang dibuka, logo 757 KB → 30 KB WebP. Had: URL `#catalogue?motor=ID` ialah hash, jadi Google mengindeks satu halaman sahaja dan pratonton WhatsApp untuk setiap motor kekal pratonton umum.
+
+Rollout tambahan selepas `pos.sql`: `invoice-profile.sql`, `vehicle-quick-sale.sql`. `tests/run-pos-sql.mjs` kini menjalankan 23 migrasi dan empat regresi SQL.

@@ -9,7 +9,7 @@ export function canShareServiceInvoice(job: Pick<Job, 'status'>) {
 }
 
 /** Downscales the 1343px logo to a small PNG so the PDF stays light. */
-export async function loadLogo(url = location.origin + location.pathname + 'logo-transparent-v2.png'): Promise<string | null> {
+export async function loadLogo(url = location.origin + location.pathname + 'logo-320.png'): Promise<string | null> {
   try {
     const image = new Image();
     image.src = url;

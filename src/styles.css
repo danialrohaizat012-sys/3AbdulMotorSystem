@@ -255,3 +255,27 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .sale-submit{width:100%;min-height:54px!important;font-size:16px!important}
 .sale-done{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:10px 0}.sale-done>svg{color:#7ddc95}.sale-done b{font-size:18px}.sale-done .action-row{justify-content:center;margin-top:12px}
 @media(max-width:520px){.sale-cta{flex-wrap:wrap}.sale-cta .btn{width:100%}.sale-choice{grid-template-columns:1fr}.sale-choice button{min-height:48px;flex-direction:row;justify-content:space-between;align-items:center}}
+/* Phone first view (≤620px): customers should see motorcycles without scrolling.
+   Hero becomes a short welcome band, heading and filters compact, so the first
+   card starts within the first screen. */
+@media(max-width:620px){
+.catalogue-bar{height:60px!important}
+.catalogue-bar .brand img{width:44px;height:38px}
+.catalogue-workspace{padding-top:14px!important}
+.catalogue-hero{padding:16px 16px!important;margin-bottom:14px!important;border-radius:14px!important}
+.catalogue-hero .hero-kicker{margin-bottom:6px}
+.catalogue-hero h1{font-size:24px!important;line-height:1.15!important}
+.catalogue-hero .hero-copy>p,.catalogue-hero .hero-action,.catalogue-hero .hero-services{display:none}
+.catalogue-heading{flex-direction:row!important;align-items:center!important;gap:10px!important;padding:0 0 10px!important;margin-bottom:10px!important}
+.catalogue-heading .eyebrow,.catalogue-heading p{display:none}
+.catalogue-heading h1{font-size:22px!important}
+.catalogue-summary{display:flex!important;gap:6px!important;margin:0!important}
+.catalogue-summary>div{padding:5px 9px!important;border-radius:8px!important;gap:6px;display:flex;align-items:center}
+.catalogue-summary span{font-size:11px!important}.catalogue-summary b{font-size:15px!important}
+.catalogue-workspace .filters{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important;padding:8px!important;margin-bottom:8px!important}
+.catalogue-workspace .filters .search{grid-column:1/-1;min-height:44px}
+.catalogue-workspace .filters .picker{min-height:38px!important;height:38px;font-size:13px!important;padding:0 10px!important}
+.catalogue-workspace .records-section>.section-label{display:none}
+.catalogue-heading h1{white-space:nowrap;font-size:20px!important}
+.catalogue-results{font-size:12px!important;margin:4px 0 8px!important}
+}

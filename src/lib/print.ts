@@ -62,7 +62,7 @@ export async function printRecord(record:Vehicle|Job,payments:Payment[],document
  w.document.write('<p style="font-family:Arial;padding:24px">Menyediakan dokumen…</p>');
  try{
   const doc=buildInvoice(record,payments,documentType,await loadInvoiceProfile());
-  w.document.open();w.document.write(invoiceHtml(doc,location.origin+location.pathname+'logo-transparent-v2.png'));w.document.close();
+  w.document.open();w.document.write(invoiceHtml(doc,location.origin+location.pathname+'logo-320.png'));w.document.close();
   const img=w.document.querySelector('img');const go=()=>{w.focus();w.print()};
   if(img&&!img.complete){img.addEventListener('load',go,{once:true});img.addEventListener('error',go,{once:true})}else setTimeout(go,50);
  }catch(e){w.close();throw e}
