@@ -210,3 +210,72 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .catalogue-workspace .bike-bottom .btn:hover{background:#f4d586;border-color:#f4d586}
 .catalogue-workspace .bike-bottom .btn svg{width:18px!important;height:18px!important;flex:none}
 @media(max-width:620px){.catalogue-workspace .bike-grid{gap:18px}.catalogue-workspace .bike-info{padding:16px 18px 18px}.catalogue-workspace .bike-info h3{font-size:21px}.catalogue-workspace .bike-specs{gap:10px;margin:11px 0 15px}.catalogue-workspace .compact-selling{font-size:28px}.catalogue-workspace .bike-bottom{gap:14px}}
+/* Phone catalogue (≤620px): compact horizontal cards so 3–4 motorcycles fit per screen
+   instead of one tall card. Photo left, key facts and price right; whole card stays tappable. */
+@media(max-width:620px){
+.catalogue-workspace .bike-grid{grid-template-columns:1fr;gap:12px}
+.catalogue-workspace .bike-card{display:grid;grid-template-columns:minmax(0,42%) minmax(0,1fr);border-radius:14px;box-shadow:none}
+.catalogue-workspace .photo-button{height:100%;min-height:150px;background:#101820}
+.catalogue-workspace .bike-photo{aspect-ratio:auto;height:100%!important;min-height:150px;border-radius:0}
+.catalogue-workspace .bike-photo>img{object-fit:contain!important;border-radius:0}
+.catalogue-workspace .bike-photo .status{top:8px;left:8px;font-size:10px;padding:3px 8px}
+.catalogue-workspace .catalogue-photo-count{right:8px;bottom:8px;padding:2px 7px;font-size:10px}
+.catalogue-workspace .bike-info{padding:11px 12px;display:flex;flex-direction:column;min-width:0}
+.catalogue-workspace .bike-meta{margin-bottom:2px;font-size:10px}
+.catalogue-workspace .bike-meta>span:last-child{padding:1px 5px;font-size:9px}
+.catalogue-workspace .bike-info h3{font-size:18px;line-height:1.2;overflow-wrap:anywhere}
+.catalogue-workspace .bike-specs{margin:6px 0 8px;gap:5px;font-size:11px}
+.catalogue-workspace .bike-specs>span{padding:2px 6px;font-size:11px;gap:4px}
+.catalogue-workspace .bike-specs svg{width:12px;height:12px}
+.catalogue-workspace .bike-bottom{gap:6px;margin-top:auto}
+.catalogue-workspace .compact-selling{font-size:20px}
+.catalogue-workspace .compact-original del{font-size:12px}
+.catalogue-workspace .compact-monthly{font-size:12px;margin:0}
+.catalogue-workspace .compact-terms{display:none}
+.catalogue-workspace .bike-bottom .btn{min-height:38px;padding:6px 10px;font-size:13px;border-radius:8px}
+.catalogue-hero{padding:26px 20px!important}
+.catalogue-hero h1{font-size:34px!important}
+.catalogue-hero p{font-size:15px}
+}
+@media(max-width:360px){.catalogue-workspace .bike-card{grid-template-columns:minmax(0,38%) minmax(0,1fr)}.catalogue-workspace .bike-specs>span:nth-child(3){display:none}}
+/* One-step motorcycle sale */
+.sale-cta{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:14px;border:1px solid #ffd21c66;background:#2a2610;border-radius:12px}
+.sale-cta>svg{color:#ffd21c;flex:none}.sale-cta>div{flex:1;min-width:0}.sale-cta p{color:#c9ccd1;font-size:13px}
+.sale-cta.sold{border-color:#2f6b45;background:#13261b}.sale-cta.sold>svg{color:#7ddc95}
+.sale-choice{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.sale-choice button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;padding:9px 11px;border-radius:10px;border:1px solid #393e45;background:#24282d;color:#f5f5f5;text-align:left}
+.sale-choice button small{color:#aeb3bb;font-size:12px}.sale-choice button.active{border-color:#ffd21c;background:#3a3412}.sale-choice button.active small{color:#f1e3a6}
+.sale-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.sale-methods button{min-height:46px;border-radius:9px;border:1px solid #393e45;background:#24282d;color:#f5f5f5;font-weight:700}
+.sale-methods button.active{background:#ffd21c;border-color:#ffd21c;color:#141414}
+.sale-more{background:none;border:0;padding:6px 0;font-size:13px;color:#c2c6cd;text-decoration:underline}
+.sale-price{margin:12px 0 0}.sale-price b{font-size:20px;color:#ffd21c;margin-left:6px}
+.sale-summary{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:14px 0;padding:12px 14px;border-radius:10px;background:#24282d}
+.sale-summary span{color:#aeb3bb;font-size:13px}.sale-summary.done{background:#183223}.sale-summary.done b{color:#7ddc95}
+.sale-submit{width:100%;min-height:54px!important;font-size:16px!important}
+.sale-done{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:10px 0}.sale-done>svg{color:#7ddc95}.sale-done b{font-size:18px}.sale-done .action-row{justify-content:center;margin-top:12px}
+@media(max-width:520px){.sale-cta{flex-wrap:wrap}.sale-cta .btn{width:100%}.sale-choice{grid-template-columns:1fr}.sale-choice button{min-height:48px;flex-direction:row;justify-content:space-between;align-items:center}}
+/* Phone first view (≤620px): customers should see motorcycles without scrolling.
+   Hero becomes a short welcome band, heading and filters compact, so the first
+   card starts within the first screen. */
+@media(max-width:620px){
+.catalogue-bar{height:60px!important}
+.catalogue-bar .brand img{width:44px;height:38px}
+.catalogue-workspace{padding-top:14px!important}
+.catalogue-hero{padding:16px 16px!important;margin-bottom:14px!important;border-radius:14px!important}
+.catalogue-hero .hero-kicker{margin-bottom:6px}
+.catalogue-hero h1{font-size:24px!important;line-height:1.15!important}
+.catalogue-hero .hero-copy>p,.catalogue-hero .hero-action,.catalogue-hero .hero-services{display:none}
+.catalogue-heading{flex-direction:row!important;align-items:center!important;gap:10px!important;padding:0 0 10px!important;margin-bottom:10px!important}
+.catalogue-heading .eyebrow,.catalogue-heading p{display:none}
+.catalogue-heading h1{font-size:22px!important}
+.catalogue-summary{display:flex!important;gap:6px!important;margin:0!important}
+.catalogue-summary>div{padding:5px 9px!important;border-radius:8px!important;gap:6px;display:flex;align-items:center}
+.catalogue-summary span{font-size:11px!important}.catalogue-summary b{font-size:15px!important}
+.catalogue-workspace .filters{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important;padding:8px!important;margin-bottom:8px!important}
+.catalogue-workspace .filters .search{grid-column:1/-1;min-height:44px}
+.catalogue-workspace .filters .picker{min-height:38px!important;height:38px;font-size:13px!important;padding:0 10px!important}
+.catalogue-workspace .records-section>.section-label{display:none}
+.catalogue-heading h1{white-space:nowrap;font-size:20px!important}
+.catalogue-results{font-size:12px!important;margin:4px 0 8px!important}
+}
