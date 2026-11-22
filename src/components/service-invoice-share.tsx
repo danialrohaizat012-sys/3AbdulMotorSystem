@@ -2,7 +2,8 @@ import {useState} from 'react';
 import {Download, FileText, MessageCircle, Share2} from 'lucide-react';
 import {normalizePhone} from '../lib/business';
 import {jobId} from '../lib/motor';
-import {getRecord} from '../lib/records';
+import {getRecord,loadPayments} from '../lib/records';
+import {loadInvoiceProfile} from '../lib/invoice-profile';
 
 type PreparedInvoice = {file: File; whatsappUrl: string};
 
@@ -15,8 +16,10 @@ export function ServiceInvoiceShare({id}: {id: number}) {
     setBusy(true);
     setError('');
     try {
-      const [job, {serviceInvoicePdf}] = await Promise.all([
+      const [job, payments, profile, {serviceInvoicePdf}] = await Promise.all([
         getRecord('jobs', id),
+        loadPayments('jobs', id),
+        loadInvoiceProfile(),
         import('../lib/service-invoice-pdf'),
       ]);
       if ('brand' in job) throw Error('Job servis tidak dijumpai.');
@@ -24,7 +27,7 @@ export function ServiceInvoiceShare({id}: {id: number}) {
       const message = 'Salam ' + (job.customer || 'tuan/puan') + ', ini invois servis ' + jobId(job.id) +
         ' untuk ' + job.bike + (job.plate ? ' (' + job.plate + ')' : '') + '. Terima kasih daripada 3 Abdul Motor.';
       setInvoice({
-        file: serviceInvoicePdf(job),
+        file: await serviceInvoicePdf(job, payments, profile),
         whatsappUrl: /^[1-9][0-9]{7,14}$/.test(phone)
           ? 'https://wa.me/' + phone + '?text=' + encodeURIComponent(message)
           : '',
