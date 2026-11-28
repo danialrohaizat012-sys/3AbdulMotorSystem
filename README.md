@@ -123,3 +123,17 @@ Rollout tambahan selepas `pos.sql`: `invoice-profile.sql`, `vehicle-quick-sale.s
 - **Gambar setiap motosikal: 5 → 10** (borang, validasi dan guard database).
 
 Rollout: `supabase/catalogue-loan-and-photos.sql` selepas `vehicle-quick-sale.sql`. Sebelum migrasi, tetapan kalkulator memaparkan nota migrasi dan simpanan foto ke-6 hingga ke-10 ditolak oleh database dengan mesej "Maksimum 5 gambar".
+
+## Servis/repair melalui POS & inventori alat ganti (28 November 2026) — pending production rollout
+
+Keputusan operasi: kerja repair baharu tidak lagi melalui aliran Garage (Baharu → Dalam kerja → Siap → Diserahkan). Repair direkod terus sebagai jualan **Servis / repair** di POS.
+
+- **POS → Kaunter → Servis / repair:** no. plat (wajib), motosikal, mekanik, odometer dan kerja dibuat; alat ganti dipilih dari senarai produk (stok ditolak) dan **Upah kerja** boleh ditambah oleh mana-mana staf "POS: jual". Item bebas lain masih memerlukan "POS: urus". Bayaran penuh semasa selesai, seperti jualan POS lain.
+- Taip no. plat → servis lepas dipaparkan dan nama, telefon serta motosikal diisi automatik.
+- **Jualan → Sejarah servis motosikal:** cari ikut plat, telefon atau nama, merentas semua tarikh.
+- Resit 80mm dan **Invois A4** memaparkan butiran servis serta jenis setiap item (alat ganti / upah).
+- Accounting: kategori **Bayaran servis**, penerangan "Servis · motosikal plat".
+- **Inventori → Alat ganti:** stok alat ganti (produk POS yang sama): tambah, terima stok, laras, stok rendah, nilai stok. Akses mengikut "POS: urus" (urus) atau "POS: jual" (lihat).
+- **Garaj (lama)** kekal di hujung menu untuk menyelesaikan job dan baki pelanggan lama; butang job baharu kini membuka Servis di POS. Tiada data dipadam.
+
+Rollout: `supabase/pos-service.sql` selepas `catalogue-loan-and-photos.sql`. Ujian: `tests/pos-service.sql` (dalam `tests/run-pos-sql.mjs`, 25 migrasi).

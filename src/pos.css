@@ -69,3 +69,20 @@
  .pos-mobile-bar{display:flex;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:40;justify-content:space-between;align-items:center;gap:10px;min-height:54px;padding:10px 16px;border-radius:12px;background:#ffd21c;color:#141414;font-weight:700;box-shadow:0 8px 24px #0008}
  .pos-quick,.pos-methods{grid-template-columns:repeat(2,1fr)}
 }
+/* Service (repair) sales */
+.pos-type{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#111315;border:1px solid #30343a;border-radius:11px;padding:4px}
+.pos-type button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border:0;border-radius:8px;background:transparent;color:#c2c6cd;font-weight:700;font-size:14px}
+.pos-type button.active{background:#ffd21c;color:#141414}
+.pos-service{display:flex;flex-direction:column;gap:4px;border:1px solid #3a3412;background:#1f1d12;border-radius:10px;padding:10px 12px}
+.pos-service .field{margin:0}.pos-service textarea{font-size:16px}
+.pos-history{display:flex;flex-direction:column;gap:2px;font-size:12px;color:#c9ccd1;background:#24282d;border-radius:8px;padding:8px 10px}
+.pos-history b{font-size:12px;color:#ffd21c}
+.pos-kind{display:block;font-size:11px;color:#9aa3ad}
+.pos-add-row{gap:8px;margin:0}
+.pos-badge{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:2px 8px;border-radius:999px;background:#3a3412;color:#ffd21c;font-size:11px;font-weight:700;vertical-align:middle}
+.pos-history-search{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0}
+.pos-history-search h3{flex:1 0 100%;display:flex;align-items:center;gap:8px;font-size:16px}
+.pos-history-search .search{flex:1 1 240px}
+.pos-history-search .pos-product-list{flex:1 0 100%}
+.pos-service-summary{display:flex;flex-direction:column;gap:2px;margin-bottom:12px;padding:10px 12px;border-radius:10px;background:#1f1d12;border:1px solid #3a3412;font-size:13px;color:#c9ccd1}
+.pos-service-summary b{display:flex;align-items:center;gap:6px;color:#ffd21c;font-size:14px}.pos-service-summary p{margin:4px 0 0;white-space:pre-wrap}

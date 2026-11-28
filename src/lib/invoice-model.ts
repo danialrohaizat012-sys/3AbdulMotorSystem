@@ -51,3 +51,29 @@ export function buildInvoice(record:Vehicle|Job,payments:Payment[],type:DocType,
   business:{name:clean(profile.businessName)||defaultProfile.businessName,lines:business},billTo:{title:type==='receipt'?'Diterima daripada':vehicle?'Pembeli':'Pelanggan',lines:billTo.filter(Boolean)},subject,
   items,totals,payments:type==='estimate'?[]:ledger,notes,bank,signatures:type==='estimate'?['Disediakan oleh','Persetujuan pelanggan']:type==='receipt'?['Diterima oleh']:vehicle?['Penjual','Pembeli']:['Disediakan oleh','Diterima oleh pelanggan']};
 }
+
+type PosLike={id:number;saleType?:'counter'|'service';bike?:string;plate?:string;mileage?:number|null;mechanic?:string;workNotes?:string;customerName:string;customerPhone:string;subtotal:number;discount:number;total:number;paid:number;status:'completed'|'voided';voidReason:string;cashierName:string;createdAt:string;
+ lines?:{name:string;qty:number;unitPrice:number;kind?:'part'|'labour'|'other'}[];payments?:{id:number;amount:number;method:string;purpose:string;note:string;receiverName:string;createdAt:string}[]};
+const kindName:Record<string,string>={part:'Alat ganti',labour:'Upah kerja',other:'Lain-lain'};
+/** POS sale (counter or service) as the same A4 document model. */
+export function buildPosInvoice(sale:PosLike,profile:InvoiceProfile,now:Date=new Date()):InvoiceDoc{
+ const service=sale.saleType==='service';const ref='POS-'+String(sale.id).padStart(4,'0');const number='INV-'+ref;
+ const items=(sale.lines||[]).map((l,i)=>({no:i+1,description:l.name,detail:kindName[l.kind||'other']||'',qty:l.qty,unitPrice:l.unitPrice,amount:l.qty*l.unitPrice}));
+ const totals:DocLine[]=[{label:'Jumlah kecil',value:money(sale.subtotal)}];
+ if(sale.discount>0)totals.push({label:'Diskaun',value:'-'+money(sale.discount)});
+ totals.push({label:'Jumlah',value:money(sale.total),strong:true},{label:'Jumlah dibayar',value:money(sale.paid),tone:'paid'},{label:'Baki perlu dibayar',value:money(Math.max(0,sale.total-sale.paid)),strong:true,tone:sale.status==='voided'||sale.paid>=sale.total?'paid':'due'});
+ const status:InvoiceDoc['status']=sale.status==='voided'?{label:'DIBATALKAN',tone:'due'}:{label:'DIBAYAR PENUH',tone:'paid'};
+ const business=[profile.registrationNo&&'No. pendaftaran: '+profile.registrationNo,profile.address,[profile.phone&&'Tel: '+formatPhone(profile.phone),profile.email].filter(Boolean).join('  ·  ')].filter(Boolean) as string[];
+ const notes:{title:string;text:string}[]=[];
+ if(service&&clean(sale.workNotes))notes.push({title:'Kerja dibuat',text:clean(sale.workNotes)});
+ if(sale.status==='voided')notes.push({title:'Dibatalkan',text:clean(sale.voidReason)});
+ if(clean(profile.terms))notes.push({title:'Terma & syarat',text:clean(profile.terms)});
+ const title=service?'Invois Servis':'Invois Jualan';
+ return {type:'invoice',title,fileName:title.replace(/\s+/g,'-')+'-'+ref+'.pdf',number,reference:ref,issuedAt:dateText(now.toISOString()),status,
+  business:{name:clean(profile.businessName)||defaultProfile.businessName,lines:business},
+  billTo:{title:'Pelanggan',lines:[clean(sale.customerName)||'Pelanggan walk-in',sale.customerPhone?formatPhone(sale.customerPhone):''].filter(Boolean)},
+  subject:service?{title:'Butiran servis',lines:[[sale.bike,sale.plate].filter(Boolean).join(' · '),sale.mileage?'Odometer: '+sale.mileage.toLocaleString('ms-MY')+' km':'','Mekanik: '+(clean(sale.mechanic)||'—'),'Tarikh: '+dateText(sale.createdAt),'Juruwang: '+clean(sale.cashierName)].filter(Boolean)}
+   :{title:'Butiran jualan',lines:['Jualan kaunter','Tarikh: '+dateText(sale.createdAt),'Juruwang: '+clean(sale.cashierName)]},
+  items,totals,payments:(sale.payments||[]).slice().sort((a,b)=>a.id-b.id).map(p=>({reference:'PAY-'+String(p.id).padStart(4,'0'),date:dateText(p.createdAt),method:(p.amount<0?'Refund · ':'')+(methodName[p.method]||p.method),receiver:clean(p.receiverName),note:clean(p.note)||purposeName[p.purpose]||'',amount:p.amount})),
+  notes,bank:null,signatures:service?['Mekanik','Diterima oleh pelanggan']:['Juruwang','Pelanggan']};
+}
