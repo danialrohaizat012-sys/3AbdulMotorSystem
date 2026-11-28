@@ -11,6 +11,7 @@ import type {Vehicle} from '@/lib/motor';
 import {getRecord,loadPayments,loadRecords,loadVehicleSales} from '@/lib/records';
 import type {VehicleSaleRow} from '@/lib/records';
 import {printRecordFrom} from '@/lib/print';
+import {normalizePhone} from '@/lib/business';
 import {VehicleSaleDialog} from './vehicle-sale';
 import {blankService,kindLabels,addProduct,addCustom,setQty,setPrice,refreshCart,cartTotals,changeDue,quickCash,parseRinggit,findByCode,searchProducts,categories,buildCheckout,receiptNo,lowStock,sellable,methodLabels,blankProduct} from '@/lib/pos-model';
 import type {PosProduct,CartLine,PayMethod,LineKind,SaleType,ServiceInfo} from '@/lib/pos-model';
@@ -230,7 +231,11 @@ function Sales({onOpen,showVehicleSales}:{onOpen:(s:PosSale)=>void;showVehicleSa
   {error&&<p className="form-error" role="alert">{error}</p>}
   <div className="pos-product-list">{shown.map(row=>{if(row.kind==='motor'){
    const v=row.v;
-   return <div key={'motor-'+v.id} className="pos-product-row pos-sale-row"><div><b>{v.brand} {v.model} <span className="pos-badge"><Bike size={12}/>Jualan motor</span></b><small>{vehicleId(v.id,v.stockNo??undefined)}{v.plate?' · '+v.plate:''} · {v.buyer} · {dateText(v.soldAt)}</small></div><div className="pos-row-stock"><strong>{money(v.price)}</strong><div className="action-row"><a className="quiet-link" href={'#inventory?record='+v.id}>Lihat rekod</a><button type="button" className="btn subtle" onClick={()=>printMotorInvoice(v.id)}><Printer size={15}/>Invois</button></div></div></div>;
+   const phone=normalizePhone(v.buyerPhone||'');
+   const invoiceRef='INV-'+vehicleId(v.id,v.stockNo??undefined);
+   const message='Salam '+v.buyer+', terima kasih membeli '+v.brand+' '+v.model+' di 3 Abdul Motor. Rujukan invois anda '+invoiceRef+'.';
+   const whatsapp=/^[1-9][0-9]{8,14}$/.test(phone)?'https://wa.me/'+phone+'?text='+encodeURIComponent(message):'';
+   return <div key={'motor-'+v.id} className="pos-product-row pos-sale-row"><div><b>{v.brand} {v.model} <span className="pos-badge"><Bike size={12}/>Jualan motor</span></b><small>{vehicleId(v.id,v.stockNo??undefined)}{v.plate?' · '+v.plate:''} · {v.buyer} · {dateText(v.soldAt)}</small></div><div className="pos-row-stock"><strong>{money(v.price)}</strong><div className="action-row"><a className="quiet-link" href={'#inventory?record='+v.id}>Lihat rekod</a><button type="button" className="btn subtle" onClick={()=>printMotorInvoice(v.id)}><Printer size={15}/>Invois</button>{whatsapp?<a className="btn subtle" href={whatsapp} target="_blank" rel="noopener noreferrer"><MessageCircle size={15}/>WhatsApp</a>:<button type="button" className="btn subtle" disabled title="Nombor telefon pembeli belum tersedia"><MessageCircle size={15}/>WhatsApp</button>}</div></div></div>;
   }
   const s=row.s;
   return <button key={'pos-'+s.id} className={'pos-product-row pos-sale-row'+(s.status==='voided'?' inactive':'')} onClick={()=>void loadSale(s.id).then(onOpen).catch(e=>toast.error(errorText(e)))}><div><b>{receiptNo(s.id)}{s.saleType==='service'&&<span className="pos-badge"><Wrench size={12}/>Servis · {s.plate}</span>}{s.status==='voided'?' · DIBATALKAN':''}</b><small>{new Date(s.createdAt).toLocaleTimeString('ms-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit'})} · {s.customerName||'Walk-in'} · {s.cashierName}</small></div><div className="pos-row-stock"><span>{[...new Set((s.payments||[]).filter(p=>p.amount>0).map(p=>methodLabels[p.method]))].join(' + ')}</span><strong>{money(s.total)}</strong></div></button>;})}{!loading&&!error&&!shown.length&&<p className="muted">Tiada jualan pada tarikh ini.</p>}</div>
