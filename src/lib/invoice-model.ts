@@ -61,7 +61,9 @@ export function buildPosInvoice(sale:PosLike,profile:InvoiceProfile,now:Date=new
  const items=(sale.lines||[]).map((l,i)=>({no:i+1,description:l.name,detail:kindName[l.kind||'other']||'',qty:l.qty,unitPrice:l.unitPrice,amount:l.qty*l.unitPrice}));
  const totals:DocLine[]=[{label:'Jumlah kecil',value:money(sale.subtotal)}];
  if(sale.discount>0)totals.push({label:'Diskaun',value:'-'+money(sale.discount)});
- totals.push({label:'Jumlah',value:money(sale.total),strong:true},{label:'Jumlah dibayar',value:money(sale.paid),tone:'paid'},{label:'Baki perlu dibayar',value:money(Math.max(0,sale.total-sale.paid)),strong:true,tone:sale.status==='voided'||sale.paid>=sale.total?'paid':'due'});
+ totals.push({label:'Jumlah',value:money(sale.total),strong:true});
+ if(sale.status==='voided')totals.push({label:'Dipulangkan kepada pelanggan',value:money(sale.total),tone:'paid'},{label:'Baki perlu dibayar',value:money(0),strong:true,tone:'paid'});
+ else totals.push({label:'Jumlah dibayar',value:money(sale.paid),tone:'paid'},{label:'Baki perlu dibayar',value:money(Math.max(0,sale.total-sale.paid)),strong:true,tone:sale.paid>=sale.total?'paid':'due'});
  const status:InvoiceDoc['status']=sale.status==='voided'?{label:'DIBATALKAN',tone:'due'}:{label:'DIBAYAR PENUH',tone:'paid'};
  const business=[profile.registrationNo&&'No. pendaftaran: '+profile.registrationNo,profile.address,[profile.phone&&'Tel: '+formatPhone(profile.phone),profile.email].filter(Boolean).join('  ·  ')].filter(Boolean) as string[];
  const notes:{title:string;text:string}[]=[];

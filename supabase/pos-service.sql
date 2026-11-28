@@ -8,6 +8,15 @@ alter table public.pos_sales
  add column mileage integer check(mileage is null or mileage between 0 and 10000000),
  add column mechanic text not null default '' check(length(mechanic)<=100),
  add column work_notes text not null default '' check(length(work_notes)<=3000);
+-- Owner-set cap for a free-text labour line entered by a seller without 'POS: urus'. Default RM300 per line.
+alter table public.business_settings add column pos_labour_max bigint not null default 30000 check(pos_labour_max between 0 and 100000000);
+create function private.guard_pos_labour_setting() returns trigger language plpgsql security invoker set search_path='' as $$
+begin
+ if NEW.pos_labour_max is distinct from OLD.pos_labour_max and not exists(select 1 from public.staff where id=auth.uid() and enabled and not must_change_password and role='owner') then raise exception 'Hanya owner boleh mengubah had upah kerja.';end if;
+ return NEW;
+end;$$;
+revoke all on function private.guard_pos_labour_setting() from public,anon,authenticated;
+create trigger settings_pos_labour_owner before update on public.business_settings for each row execute function private.guard_pos_labour_setting();
 alter table public.pos_sale_lines add column kind text not null default 'part' check(kind in ('part','labour','other'));
 update public.pos_sale_lines set kind='other' where product_id is null;
 update public.pos_sale_lines l set kind='labour' from public.pos_products p where p.id=l.product_id and not p.track_stock;
@@ -56,6 +65,8 @@ begin
   -- Service jobs: any POS seller may add a labour charge; other free-form items still need a POS manager.
   if not private.staff_can('pos_manage') and not (s.sale_type='service' and NEW.kind='labour') then raise exception 'Item tanpa produk memerlukan kebenaran pengurus POS.';end if;
   if NEW.kind not in ('part','labour','other') then NEW.kind:='other';end if;
+  -- A free-text labour line cannot be used to sell parts cheaply: sellers are capped per line.
+  if not private.staff_can('pos_manage') and NEW.qty::bigint*NEW.unit_price>(select pos_labour_max from public.business_settings where id=1) then raise exception 'Upah kerja melebihi had % seunit baris. Minta pengurus POS merekodkannya.','RM'||to_char((select pos_labour_max from public.business_settings where id=1)/100.0,'FM999990.00');end if;
   NEW.sku:='';NEW.unit_cost:=coalesce(NEW.unit_cost,0);
  else
   select * into p from public.pos_products where id=NEW.product_id for update;
@@ -117,6 +128,67 @@ begin
 end;$$;
 revoke all on function public.pos_service_history(text) from public,anon;
 grant execute on function public.pos_service_history(text) to authenticated;
+
+-- Close report shows parts vs labour, and free-text labour per staff for owner review.
+create or replace function public.pos_shift_report(p_shift bigint) returns jsonb language plpgsql stable security invoker set search_path='' as $$
+declare sh public.pos_shifts; until_at timestamptz; result jsonb;
+begin
+ if not private.staff_can('pos_view') then raise exception 'Akses POS diperlukan.';end if;
+ select * into sh from public.pos_shifts where id=p_shift;
+ if sh.id is null then raise exception 'Shift tidak dijumpai.';end if;
+ until_at:=coalesce(sh.closed_at,now());
+ select jsonb_build_object(
+  'shift',to_jsonb(sh),
+  'salesCount',(select count(*) from public.pos_sales where shift_id=sh.id and status='completed'),
+  'voidCount',(select count(*) from public.pos_sales where shift_id=sh.id and status='voided'),
+  'gross',(select coalesce(sum(subtotal),0) from public.pos_sales where shift_id=sh.id and status='completed'),
+  'discount',(select coalesce(sum(discount),0) from public.pos_sales where shift_id=sh.id and status='completed'),
+  'net',(select coalesce(sum(total),0) from public.pos_sales where shift_id=sh.id and status='completed'),
+  'cost',(select coalesce(sum(l.qty::bigint*l.unit_cost),0) from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed'),
+  'methods',(select coalesce(jsonb_object_agg(method,amount),'{}'::jsonb) from (select p.method,sum(p.amount) amount from public.payments p where p.sale_id is not null and p.created_at>=sh.opened_at and p.created_at<=until_at group by p.method) m),
+  'expectedCash',coalesce(sh.expected_cash,sh.opening_float+private.pos_cash_between(sh.opened_at,until_at)),
+  'parts',(select coalesce(sum(l.qty::bigint*l.unit_price),0) from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed' and l.kind='part'),
+  'labour',(select coalesce(sum(l.qty::bigint*l.unit_price),0) from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed' and l.kind='labour'),
+  'serviceCount',(select count(*) from public.pos_sales where shift_id=sh.id and status='completed' and sale_type='service'),
+  'labourBy',(select coalesce(jsonb_agg(t order by t.amount desc),'[]'::jsonb) from (select s.cashier_name name,sum(l.qty::bigint*l.unit_price) amount from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed' and l.kind='labour' and l.product_id is null group by s.cashier_name) t),
+  'topItems',(select coalesce(jsonb_agg(t order by t.qty desc),'[]'::jsonb) from (select l.name,sum(l.qty) qty,sum(l.qty::bigint*l.unit_price) amount from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed' group by l.name order by sum(l.qty) desc limit 5) t)
+ ) into result;
+ return result;
+end;$$;
+
+-- Owner overview now includes POS sales and service jobs (repairs moved to POS).
+create or replace function public.owner_overview() returns jsonb language plpgsql security invoker set search_path='' as $$
+declare month_start timestamptz;result jsonb;
+begin
+ if not exists(select 1 from public.staff where id=auth.uid() and enabled and role='owner') then raise exception 'Akses owner diperlukan.';end if;
+ month_start:=date_trunc('month',now() at time zone 'Asia/Kuala_Lumpur') at time zone 'Asia/Kuala_Lumpur';
+ select jsonb_build_object('month',to_char(month_start at time zone 'Asia/Kuala_Lumpur','MM/YYYY'),
+ 'soldCount',(select count(*) from public.vehicles where status='sold' and sold_at>=month_start),
+ 'sales',(select coalesce(sum(price),0) from public.vehicles where status='sold' and sold_at>=month_start),
+ 'grossProfit',(select coalesce(sum(price-cost-prep),0) from public.vehicles where status='sold' and sold_at>=month_start),
+ 'vehicleReceipts',(select coalesce(sum(amount),0) from public.payments where vehicle_id is not null and paid_at>=month_start and paid_at<=now()),
+ 'serviceReceipts',(select coalesce(sum(amount),0) from public.payments where job_id is not null and paid_at>=month_start and paid_at<=now()),
+ 'vehicleOutstanding',(select coalesce(sum(greatest(price-paid,0)),0) from public.vehicles where status='reserved' or (paid>0 and status<>'sold')),
+ 'serviceOutstanding',(select coalesce(sum(greatest(private.job_total(items)-paid,0)),0) from public.jobs),
+ 'posSales',(select coalesce(sum(total),0) from public.pos_sales where status='completed' and created_at>=month_start),
+ 'posServiceCount',(select count(*) from public.pos_sales where status='completed' and sale_type='service' and created_at>=month_start),
+ 'posGrossProfit',(select coalesce(sum(s.total),0)-coalesce(sum((select sum(l.qty::bigint*l.unit_cost) from public.pos_sale_lines l where l.sale_id=s.id)),0) from public.pos_sales s where s.status='completed' and s.created_at>=month_start),
+ 'posReceipts',(select coalesce(sum(amount),0) from public.payments where sale_id is not null and paid_at>=month_start and paid_at<=now())) into result;
+ return result;
+end;$$;
+
+create or replace function private.sync_pos_stock() returns trigger language plpgsql security invoker set search_path='' as $$
+declare p public.pos_products; prev integer;
+begin
+ select * into p from public.pos_products where id=NEW.product_id;
+ prev:=greatest(coalesce(p.stock_qty,0),0);
+ update public.pos_products set stock_qty=(select coalesce(sum(qty),0) from public.pos_stock_moves where product_id=NEW.product_id),
+  -- Weighted average cost on receipt, so margins stay right when supplier prices change.
+  cost=case when NEW.kind='receive' and NEW.unit_cost is not null and private.staff_can('pos_manage') then
+   case when prev>0 then round((prev::numeric*p.cost+NEW.qty::numeric*NEW.unit_cost)/(prev+NEW.qty))::bigint else NEW.unit_cost end else cost end
+  where id=NEW.product_id;
+ return NEW;
+end;$$;
 
 -- Accounting: service sales are labelled as service payments with the bike and plate.
 CREATE OR REPLACE FUNCTION private.accounting_rows()
