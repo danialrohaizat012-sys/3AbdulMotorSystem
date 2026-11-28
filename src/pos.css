@@ -87,3 +87,5 @@
 .pos-service-summary{display:flex;flex-direction:column;gap:2px;margin-bottom:12px;padding:10px 12px;border-radius:10px;background:#1f1d12;border:1px solid #3a3412;font-size:13px;color:#c9ccd1}
 .pos-service-summary b{display:flex;align-items:center;gap:6px;color:#ffd21c;font-size:14px}.pos-service-summary p{margin:4px 0 0;white-space:pre-wrap}
 .pos-suggest{white-space:normal;text-align:left}
+.pos-labour-by{display:flex;flex-direction:column;gap:2px;font-size:13px;color:#c9ccd1;background:#24282d;border-radius:9px;padding:10px 12px;margin-bottom:12px}
+.pos-labour-by>b{font-size:12px;color:#aeb3bb;text-transform:uppercase;letter-spacing:.06em}

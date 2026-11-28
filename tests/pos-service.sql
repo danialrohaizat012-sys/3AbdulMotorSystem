@@ -25,6 +25,7 @@ do $$declare a bigint:=(select v from svc_t where k='oil');s bigint;h int;begin
  -- A seller's free-text labour line is capped (default RM300); the shift report splits parts and labour.
  begin perform public.pos_checkout(gen_random_uuid(),jsonb_build_object('sale_type','service','plate','ABC1','lines',jsonb_build_array(jsonb_build_object('name','Upah besar','kind','labour','qty',1,'unit_price',30001)),'payments','[{"method":"cash","amount":30001}]'::jsonb));raise exception 'FAIL labour cap';exception when raise_exception then if SQLERRM like 'FAIL%' or SQLERRM not like '%RM300.00%' then raise;end if;end;
  if (public.pos_shift_report((select shift_id from public.pos_sales where id=s))->>'labour')::bigint<>2500 or (public.pos_shift_report((select shift_id from public.pos_sales where id=s))->>'parts')::bigint<>7000 then raise exception 'FAIL parts/labour split';end if;
+ if (public.pos_shift_report((select shift_id from public.pos_sales where id=s))->'labourBy'->0->>'name')<>'Abu' then raise exception 'FAIL labour by mechanic';end if;
  select count(*) into h from public.pos_service_history('wxy1234');if h<>1 then raise exception 'FAIL history plate';end if;
  select count(*) into h from public.pos_service_history('012-345 6789');if h<>1 then raise exception 'FAIL history phone';end if;
  select count(*) into h from public.pos_service_history('siti');if h<>1 then raise exception 'FAIL history name';end if;

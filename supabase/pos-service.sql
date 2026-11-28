@@ -129,7 +129,7 @@ end;$$;
 revoke all on function public.pos_service_history(text) from public,anon;
 grant execute on function public.pos_service_history(text) to authenticated;
 
--- Close report shows parts vs labour, and free-text labour per staff for owner review.
+-- Close report shows parts vs labour, and labour per mechanic (e.g. for commission).
 create or replace function public.pos_shift_report(p_shift bigint) returns jsonb language plpgsql stable security invoker set search_path='' as $$
 declare sh public.pos_shifts; until_at timestamptz; result jsonb;
 begin
@@ -150,7 +150,7 @@ begin
   'parts',(select coalesce(sum(l.qty::bigint*l.unit_price),0) from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed' and l.kind='part'),
   'labour',(select coalesce(sum(l.qty::bigint*l.unit_price),0) from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed' and l.kind='labour'),
   'serviceCount',(select count(*) from public.pos_sales where shift_id=sh.id and status='completed' and sale_type='service'),
-  'labourBy',(select coalesce(jsonb_agg(t order by t.amount desc),'[]'::jsonb) from (select s.cashier_name name,sum(l.qty::bigint*l.unit_price) amount from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed' and l.kind='labour' and l.product_id is null group by s.cashier_name) t),
+  'labourBy',(select coalesce(jsonb_agg(t order by t.amount desc),'[]'::jsonb) from (select coalesce(nullif(s.mechanic,''),'Tanpa nama mekanik') name,count(distinct s.id) jobs,sum(l.qty::bigint*l.unit_price) amount from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed' and s.sale_type='service' and l.kind='labour' group by 1) t),
   'topItems',(select coalesce(jsonb_agg(t order by t.qty desc),'[]'::jsonb) from (select l.name,sum(l.qty) qty,sum(l.qty::bigint*l.unit_price) amount from public.pos_sale_lines l join public.pos_sales s on s.id=l.sale_id where s.shift_id=sh.id and s.status='completed' group by l.name order by sum(l.qty) desc limit 5) t)
  ) into result;
  return result;
