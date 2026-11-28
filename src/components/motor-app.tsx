@@ -1,6 +1,6 @@
 'use client';
 import {useState,useEffect,useCallback,Suspense,lazy} from 'react';
-import {loadRecords,getRecord,loadSettings,setCatalogueVisibility,photoPaths,signPhotos} from '@/lib/records';
+import {loadRecords,getRecord,deleteUnusedVehicle,loadSettings,setCatalogueVisibility,photoPaths,signPhotos} from '@/lib/records';
 import {VisitorCounter} from './visitor-counter';
 import {MotorFooter} from './motor-footer';
 import {can,canAccess} from '@/lib/staff';
@@ -26,7 +26,7 @@ const OutstandingPanel=lazy(()=>import('./accounting-operations').then(m=>({defa
 const ServiceInvoiceShare=lazy(()=>import('./service-invoice-share').then(m=>({default:m.ServiceInvoiceShare})));
 import {whatsappLink} from '@/lib/business';
 import type {BusinessSettings} from '@/lib/business';
-import {Bike, Wrench, Package, Search, Plus, ShieldCheck, Gauge, CalendarDays, CircleCheck, Wallet, X, RefreshCw, Eye, EyeOff, Banknote, Layers, ChevronRight, BookOpen, ShoppingCart, Calculator} from 'lucide-react';
+import {Bike, Wrench, Package, Search, Plus, ShieldCheck, Gauge, CalendarDays, CircleCheck, Wallet, X, RefreshCw, Eye, EyeOff, Banknote, Layers, ChevronRight, BookOpen, ShoppingCart, Calculator, Trash2} from 'lucide-react';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from '@/components/ui/select';
 import {SidebarProvider,Sidebar,SidebarHeader,SidebarContent,SidebarFooter,SidebarMenu,SidebarMenuItem,SidebarMenuButton,SidebarInset,SidebarTrigger} from '@/components/ui/sidebar';
@@ -45,6 +45,7 @@ export default function MotorApp({mode,staffProfile=null}:{mode:Mode;staffProfil
  const admin=mode!=='catalogue';const [records,setRecords]=useState<(Vehicle|Job)[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [query,setQuery]=useState('');const [status,setStatus]=useState('all');const [brand,setBrand]=useState('all');const [condition,setCondition]=useState('all');const [selected,setSelected]=useState<Vehicle|Job|null>(null);const [adding,setAdding]=useState(false);const [detail,setDetail]=useState<Vehicle|Job|null>(null);
  const [loanVehicle,setLoanVehicle]=useState<Vehicle|null>(null);
  const [loanError,setLoanError]=useState('');
+ const [deletingStock,setDeletingStock]=useState(false);
  const [preview,setPreview]=useState<Vehicle|null>(null);
  const [page,setPage]=useState(1);const [sort,setSort]=useState('latest');
  const [publishing,setPublishing]=useState<number|null>(null);const [publishError,setPublishError]=useState('');
@@ -74,6 +75,17 @@ export default function MotorApp({mode,staffProfile=null}:{mode:Mode;staffProfil
  const stats=mode==='garage'?[['Job aktif',jobs.filter(j=>['new','working'].includes(j.status)).length,Wrench],['Siap diambil',jobs.filter(j=>j.status==='ready').length,CircleCheck],['Nilai servis',money(jobs.reduce((s,j)=>s+total(j),0)),Banknote],['Baki job aktif',money(jobs.reduce((s,j)=>s+total(j)-j.paid,0)),Wallet]]:mode==='inventory'?[['Jumlah stok',bikes.length,Package],['Available',bikes.filter(v=>v.status==='available').length,Bike],['Nilai stok aktif',money(bikes.filter(v=>v.status!=='sold').reduce((s,v)=>s+v.price,0)),Banknote],['Reserved',bikes.filter(v=>v.status==='reserved').length,ShieldCheck]]:[];
  async function openFresh(r:Vehicle|Job){try{setDetail(await getRecord(kind,r.id))}catch(e){toast.error((e as Error).message)}}
  async function editFresh(r:Vehicle|Job){try{const fresh=await getRecord(mode==='garage'?'jobs':'vehicles',r.id);setSelected(fresh);setDetail(null)}catch(e){toast.error((e as Error).message)}}
+ async function removeStock(vehicle:Vehicle){
+  if(deletingStock||!window.confirm('Padam stok '+vehicleId(vehicle.id,vehicle.stockNo)+' ('+vehicle.brand+' '+vehicle.model+')? Rekod ini akan dikeluarkan daripada Inventori, Katalog dan POS.'))return;
+  setDeletingStock(true);
+  try{
+   await deleteUnusedVehicle(vehicle);
+   setDetail(current=>current?.id===vehicle.id&&'brand' in current?null:current);
+   toast.success('Stok dipadam. Nombor plat boleh digunakan semula jika tiada stok aktif lain.');
+   await load(true);
+  }catch(e){toast.error((e as Error).message)}
+  finally{setDeletingStock(false)}
+ }
  async function refreshDetail(){if(!detail)return;setDetail(await getRecord(mode==='garage'?'jobs':'vehicles',detail.id));await load(true)}
  useEffect(()=>{const openLink=()=>{const id=Number(new URLSearchParams(location.hash.split('?')[1]||'').get(mode==='catalogue'?'motor':'record'));if(Number.isInteger(id)&&id>0)void getRecord(mode==='catalogue'?'catalogue':mode==='garage'?'jobs':'vehicles',id).then(setDetail).catch(()=>toast.error('Rekod tidak tersedia atau akses tidak dibenarkan.'))};openLink();window.addEventListener('hashchange',openLink);return()=>window.removeEventListener('hashchange',openLink)},[mode]);
  const content=<Suspense fallback={null}>
@@ -103,7 +115,7 @@ export default function MotorApp({mode,staffProfile=null}:{mode:Mode;staffProfil
   {'brand'in detail?mode==='catalogue'?<CatalogueProfile key={detail.id} vehicle={detail} settings={settings}/>:<>{admin&&!demo&&<SaleCallToAction key={detail.id} vehicle={detail} staff={staff} onSold={refreshDetail}/>}{admin&&!demo&&<VehicleParts vehicle={detail} staff={staff} onChanged={refreshDetail}/>}{admin&&!demo&&<section className="stock-publication"><div><b>{detail.published?'Dipaparkan di katalog awam':'Belum dipaparkan di katalog'}</b><p>{detail.published?'Orang awam boleh melihat stok ini.':'Stok ini disimpan dalam Inventori sahaja.'}</p></div><button className={'btn '+(detail.published?'subtle':'primary')} disabled={publishing!==null||!editable||!can(staff,'publish_catalogue')} onClick={()=>void publishStock(detail)}>{detail.published?<EyeOff size={17}/>:<Eye size={17}/>} {publishing===detail.id?'Menyimpan…':detail.published?'Sembunyikan dari katalog':'Paparkan di katalog'}</button>{(!editable||!can(staff,'publish_catalogue'))&&<small>Owner perlu memberi akses edit inventori dan paparan katalog untuk tindakan ini.</small>}{publishError&&<p className="form-error" role="alert">{publishError}</p>}</section>}<VehicleGallery vehicle={detail}/><div className="detail-stats"><span>Kategori<b>{conditionLabels[detail.bikeCondition||'pre_owned']}</b></span><span>Tahun<b>{detail.year}</b></span><span>Jarak<b>{detail.mileage.toLocaleString()} km</b></span></div><VehicleOffer vehicle={detail} detail/><p className="description">{detail.description||'Tiada keterangan tambahan.'}</p>{!demo&&!!detail.published&&<div className="action-row"><ShareButton id={detail.id}/>{settings&&whatsappLink(settings,detail)&&<a className="btn primary" target="_blank" rel="noopener noreferrer" href={whatsappLink(settings,detail)}>Tanya melalui WhatsApp</a>}</div>}{admin&&<><div className="detail-stats"><span>Kos beli<b>{money(detail.cost)}</b></span><span>Persediaan<b>{money(detail.prep)}</b></span><span>Nombor casis<b>{detail.chassis||'—'}</b></span><span>Pembekal<b>{detail.supplier||'—'}</b></span><span>Telefon pembekal<b>{detail.supplierPhone||'—'}</b></span><span>Pembeli<b>{detail.buyer||'—'}</b></span><span>Telefon pembeli<b>{detail.buyerPhone||'—'}</b></span></div>{parseLines(detail.prepItems||'[]').map((l,i)=><p key={i} className="muted">{l.name} × {l.qty} · {money(l.qty*l.rate)}</p>)}</>}</>:<><div className="job-detail-heading"><div><h3>{detail.bike}</h3><span className="plate">{detail.plate}</span></div><Badge status={detail.status} garage/></div><div className="detail-stats"><span>Pelanggan<b>{detail.customer}</b></span><span>Telefon<b>{detail.phone||'—'}</b></span><span>Mekanik<b>{detail.mechanic||'—'}</b></span></div><div className="service-notes"><b>Aduan / permintaan</b><p>{detail.complaint}</p>{detail.notes&&<><b>Nota kerja</b><p>{detail.notes}</p></>}<b>Persetujuan anggaran</b><p>{detail.estimateStatus==='approved'?'Diluluskan · '+money(detail.approvedTotal||0):detail.estimateStatus==='sent'?'Anggaran telah diberi':'Draf'}</p>{detail.approvalNote&&<p>{detail.approvalNote}</p>}{detail.creditApprovedAt&&<p>Penyerahan dengan baki diluluskan owner: {detail.creditReason}</p>}</div><Table><TableHeader><TableRow><TableHead>Butiran</TableHead><TableHead>Kuantiti</TableHead><TableHead className="text-right">Jumlah</TableHead></TableRow></TableHeader><TableBody>{parseLines(detail.items).map((l,i)=><TableRow key={i}><TableCell>{l.name}</TableCell><TableCell>{l.qty}</TableCell><TableCell className="text-right">{money(l.qty*l.rate)}</TableCell></TableRow>)}</TableBody></Table></>}
   {mode==='garage'&&!demo&&!('brand'in detail)&&(detail.status==='ready'||detail.status==='collected')&&<ServiceInvoiceShare key={detail.id+':'+detail.version+':'+detail.paid} id={detail.id}/>}
   {admin&&'brand'in detail&&<button className="btn subtle" onClick={()=>setPreview(detail)}>Preview paparan customer</button>}
-  {admin&&<><button className="btn primary" disabled={demo||!editable} onClick={()=>void editFresh(detail)}>Edit {mode==='garage'?'job':'motosikal'}</button>{!demo&&<PaymentPanel record={detail} owner={owner} staff={staff} onChanged={refreshDetail}/>}</>}
+  {admin&&<><button className="btn primary" disabled={demo||!editable} onClick={()=>void editFresh(detail)}>Edit {mode==='garage'?'job':'motosikal'}</button>{mode==='inventory'&&owner&&!demo&&'brand' in detail&&detail.status!=='sold'&&<button type="button" className="btn subtle" disabled={deletingStock} onClick={()=>void removeStock(detail)}><Trash2 size={16}/>{deletingStock?'Memadam…':'Padam stok'}</button>}{!demo&&<PaymentPanel record={detail} owner={owner} staff={staff} onChanged={refreshDetail}/>}</>}
   </>}</Suspense></DialogContent></Dialog>
   {!admin&&<Dialog open={!!loanVehicle} onOpenChange={open=>{if(!open)setLoanVehicle(null)}}>
    <DialogContent className="loan-estimator-dialog">
