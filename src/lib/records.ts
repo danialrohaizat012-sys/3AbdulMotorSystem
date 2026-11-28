@@ -47,15 +47,16 @@ export function normalizeBrand(name:string){return name.trim().replace(/\s+/g,' 
 export async function loadBrands(force=false){if(force)brandsCache.clear();return brandsCache.get('brands',async()=>{const {data,error}=await client().from('vehicle_brands').select('name').order('name');if(error)throw Error('Senarai jenama gagal dimuatkan. Cuba semula.');return data.map(b=>b.name as string)})}
 export async function addBrand(name:string){const value=normalizeBrand(name);if(value.length<2||value.length>80)throw Error('Nama jenama mesti 2–80 aksara.');const {error}=await client().from('vehicle_brands').upsert({name:value},{onConflict:'name',ignoreDuplicates:true});if(error)throw Error(errorMessage(error));brandsCache.clear();return value}
 
-export type SaleInput={buyer:string;buyerPhone:string;price:number;amount:number;method:'cash'|'transfer'|'card'|'split';cashAmount?:number;paidAt:string;note:string};
+export type SaleInput={buyer:string;buyerPhone:string;price:number;discount?:number;amount:number;method:'cash'|'transfer'|'card'|'split';cashAmount?:number;paidAt:string;note:string};
 export type SaleResult={status:string;paid:number;price:number;balance:number;paymentId:number|null;transferPaymentId?:number|null};
 /** One-step sale. Uses the atomic sell_vehicle RPC; until that migration is applied, falls back to the
  * same existing steps (save buyer → record payment → mark Sold), each still guarded by the database. */
 export async function sellVehicle(v:Vehicle,input:SaleInput,requestId:string):Promise<SaleResult>{
- const payload={buyer:input.buyer,buyer_phone:input.buyerPhone,price:input.price,amount:input.amount,method:input.method,cash_amount:input.cashAmount,paid_at:input.paidAt,note:input.note};
+ const payload={buyer:input.buyer,buyer_phone:input.buyerPhone,price:input.price,discount:input.discount,amount:input.amount,method:input.method,cash_amount:input.cashAmount,paid_at:input.paidAt,note:input.note};
  const {data,error}=await client().rpc('sell_vehicle',{p_vehicle:v.id,p_version:v.version??0,p_request:requestId,p_data:payload});
  if(!error){recordCache.clear();window.dispatchEvent(new Event('3am-operations-changed'));return {status:data.status,paid:data.paid,price:data.price,balance:data.balance,paymentId:data.payment_id,transferPaymentId:data.transfer_payment_id}}
  if(error.code!=='PGRST202'&&error.code!=='42883')throw Error(errorMessage(error));
+ if(input.discount)throw Error('Diskaun jualan memerlukan kemas kini pangkalan data.');
  if(input.method==='split')throw Error('Bayaran Tunai + Transfer memerlukan kemas kini pangkalan data.');
  let fresh=await saveRecord('vehicles',{...v,buyer:input.buyer.trim(),buyerPhone:input.buyerPhone.trim(),price:input.price,status:'reserved'},true) as Vehicle;
  if(input.amount>0){await addPayment('vehicles',v.id,{requestId,amount:input.amount,method:input.method,purpose:fresh.paid+input.amount>=fresh.price?'balance':'deposit',paidAt:input.paidAt,note:input.note});fresh=await getRecord('vehicles',v.id) as Vehicle}

@@ -32,21 +32,25 @@ export function SaleCallToAction({vehicle,staff,onSold}:{vehicle:Vehicle;staff:S
 export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicle;staff:StaffProfile|null;onClose:()=>void;onDone:()=>Promise<void>}){
  const owner=staff?.role==='owner';const takeMoney=can(staff,'receive_payments');
  const [buyer,setBuyer]=useState(vehicle.buyer||'');const [phone,setPhone]=useState(vehicle.buyerPhone||'');const [price,setPrice]=useState(vehicle.price);
+ const [discount,setDiscount]=useState(0);
+ const canDiscount=can(staff,'pos_sell');
  const [choice,setChoice]=useState<PayChoice>(takeMoney?'full':'none');const [deposit,setDeposit]=useState(0);const [method,setMethod]=useState<Method>('cash');
  const [cashAmount,setCashAmount]=useState(0);
  const [more,setMore]=useState(false);const [paidAt,setPaidAt]=useState(localNow());const [note,setNote]=useState('');
  const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [result,setResult]=useState<SaleResult|null>(null);
  const request=useRef(crypto.randomUUID());
- const balance=Math.max(0,price-vehicle.paid);const amount=choice==='full'?balance:choice==='deposit'?deposit:0;const after=balance-amount;
+ const netPrice=price-discount;
+ const balance=Math.max(0,netPrice-vehicle.paid);const amount=choice==='full'?balance:choice==='deposit'?deposit:0;const after=balance-amount;
  const limit=!owner&&staff?.payment_limit!=null?staff.payment_limit:null;
  async function submit(e:React.FormEvent){e.preventDefault();if(busy)return;setBusy(true);setError('');try{
   if(buyer.trim().length<2)throw Error('Isi nama pembeli.');if(phone.replace(/\D/g,'').length<9)throw Error('Isi nombor telefon pembeli.');
+  if(!Number.isSafeInteger(discount)||discount<0||netPrice<=0||netPrice<vehicle.paid)throw Error('Harga selepas diskaun mesti positif dan tidak kurang daripada bayaran yang sudah diterima.');
   if(choice==='deposit'&&(deposit<=0||deposit>=balance))throw Error('Deposit mesti lebih daripada RM0 dan kurang daripada baki. Pilih "Bayar penuh" untuk bayaran penuh.');
   const split=amount>0&&method==='split';
   if(split&&(!Number.isSafeInteger(cashAmount)||cashAmount<=0||cashAmount>=amount))throw Error('Isi amaun tunai yang lebih daripada RM0 dan kurang daripada jumlah bayaran.');
   if(limit!==null&&amount>limit)throw Error('Amaun melebihi had bayaran anda ('+money(limit)+'). Minta owner merekodkan bayaran ini.');
   const paid=new Date(paidAt);if(amount>0&&(Number.isNaN(paid.getTime())||paid.getTime()>Date.now()))throw Error('Tarikh bayaran tidak boleh melebihi masa sekarang.');
-  const r=await sellVehicle(vehicle,{buyer,buyerPhone:phone,price,amount,method:split?'split':method==='split'?'cash':method,cashAmount:split?cashAmount:undefined,paidAt:paid.toISOString(),note},request.current);
+  const r=await sellVehicle(vehicle,{buyer,buyerPhone:phone,price,discount,amount,method:split?'split':method==='split'?'cash':method,cashAmount:split?cashAmount:undefined,paidAt:paid.toISOString(),note},request.current);
   setResult(r);toast.success(r.status==='sold'?'Jualan selesai. Status: Sold.':amount>0?'Deposit direkod. Status: Reserved.':'Tempahan disimpan.');await onDone();
  }catch(e){setError((e as Error).message)}finally{setBusy(false)}}
  function print(type:'invoice'|'receipt'){printRecordFrom(async()=>{
@@ -63,6 +67,9 @@ export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicl
   <form onSubmit={submit}>
    <div className="form-grid"><Field label="Nama pembeli *"><input required autoFocus maxLength={120} value={buyer} onChange={e=>setBuyer(e.target.value)}/></Field><Field label="Telefon pembeli *"><input required type="tel" inputMode="tel" maxLength={20} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="012-345 6789"/></Field></div>
    {owner?<NumberField label="Harga jualan (RM)" cents value={price} onChange={setPrice}/>:<p className="sale-price">Harga jualan <b>{money(price)}</b></p>}
+   {canDiscount&&<NumberField label={vehicle.saleDiscount?'Diskaun tambahan (RM)':'Diskaun (RM)'} cents value={discount} onChange={setDiscount}/>}
+   {!!vehicle.saleDiscount&&<p className="form-note">Diskaun sudah direkod {money(vehicle.saleDiscount)}.</p>}
+   {discount>0&&<p className="sale-price">Harga selepas diskaun <b>{money(netPrice)}</b></p>}
    {vehicle.paid>0&&<p className="form-note">Sudah dibayar {money(vehicle.paid)}. Baki {money(balance)}.</p>}
    <div className="sale-choice" role="radiogroup" aria-label="Bayaran sekarang">
     {([['full','Bayar penuh',money(balance)],['deposit','Deposit','Sebahagian'],['none','Tempah sahaja','Tiada bayaran']] as [PayChoice,string,string][]).map(([k,l,s])=><button type="button" key={k} role="radio" aria-checked={choice===k} className={choice===k?'active':''} disabled={k!=='none'&&!takeMoney} onClick={()=>setChoice(k)}><b>{l}</b><small>{s}</small></button>)}
@@ -76,7 +83,7 @@ export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicl
    </div>}
    {amount>0&&<button type="button" className="quiet-link sale-more" onClick={()=>setMore(!more)}>{more?'Sembunyi pilihan lain':'Tukar tarikh bayaran / tambah nota'}</button>}
    {more&&amount>0&&<div className="form-grid"><Field label="Tarikh & masa bayaran"><input type="datetime-local" value={paidAt} max={localNow()} onChange={e=>setPaidAt(e.target.value)}/></Field><Field label="Nota (pilihan)"><input maxLength={500} value={note} onChange={e=>setNote(e.target.value)} placeholder="cth. No. rujukan transfer"/></Field></div>}
-   <div className={'sale-summary '+(after===0&&price>0?'done':'')}><span>Selepas ini</span><b>{after===0?'SOLD · dibayar penuh':(amount>0?'RESERVED · baki '+money(after):'RESERVED · belum dibayar')}</b></div>
+   <div className={'sale-summary '+(after===0&&netPrice>0?'done':'')}><span>Selepas ini</span><b>{after===0?'SOLD · dibayar penuh':(amount>0?'RESERVED · baki '+money(after):'RESERVED · belum dibayar')}</b></div>
    {error&&<p className="form-error" role="alert">{error}</p>}
    <button className="btn primary sale-submit" disabled={busy}>{busy?'Merekod…':amount>0?'Rekod jualan · '+money(amount)+' '+methodLabels[method]:'Simpan tempahan'}</button>
   </form>}

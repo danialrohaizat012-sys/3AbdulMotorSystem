@@ -36,7 +36,8 @@ export function buildInvoice(record:Vehicle|Job,payments:Payment[],type:DocType,
  // A receipt is numbered by its latest payment, so deposit and balance receipts differ.
  const lastPay=type==='receipt'?[...payments].filter(p=>p.amount>0).sort((a,b)=>b.id-a.id)[0]:undefined;
  const number=lastPay?'RES-PAY-'+String(lastPay.id).padStart(4,'0'):prefix+'-'+ref;
- const items:DocItem[]=vehicle?[{no:1,description:record.brand+' '+record.model,detail:[record.bikeCondition==='new'?'Baharu':'Terpakai','Tahun '+record.year,record.mileage?record.mileage.toLocaleString('ms-MY')+' km':''].filter(Boolean).join(' · '),qty:1,unitPrice:record.originalPrice&&record.originalPrice>record.price?record.originalPrice:record.price,amount:record.originalPrice&&record.originalPrice>record.price?record.originalPrice:record.price}]
+ const vehicleSubtotal=vehicle?(record.saleDiscount?record.price+record.saleDiscount:Math.max(record.price,record.originalPrice??0)):0;
+ const items:DocItem[]=vehicle?[{no:1,description:record.brand+' '+record.model,detail:[record.bikeCondition==='new'?'Baharu':'Terpakai','Tahun '+record.year,record.mileage?record.mileage.toLocaleString('ms-MY')+' km':''].filter(Boolean).join(' · '),qty:1,unitPrice:vehicleSubtotal,amount:vehicleSubtotal}]
   :parseLines(record.items).map((l,i)=>({no:i+1,description:l.name,detail:l.kind==='part'?'Alat ganti':'Upah kerja',qty:l.qty,unitPrice:l.rate,amount:l.qty*l.rate}));
  const subtotal=items.reduce((s,i)=>s+i.amount,0);
  const amount=vehicle?record.price:lineTotal(parseLines(record.items));

@@ -40,3 +40,9 @@ test('amount in Malay words as printed on Malaysian invoices',()=>{
 test('invoice meta uses dates without time and the sale date; vehicle item does not repeat plate/chassis',()=>{const d=m.buildInvoice({...bike,soldAt:'2026-11-25T04:00:00Z'},[],'invoice',profile,new Date('2026-11-28T02:00:00Z'));
  assert.deepEqual(d.meta,[['No. invois','INV-3AM-0033'],['Tarikh invois','28 November 2026'],['Tarikh jualan','25 November 2026']]);
  assert.ok(!d.items[0].detail.includes('ABC 123'));assert.equal(d.amountWords,m.ringgitWords(780000));assert.ok(d.thanks.includes('3 Abdul Motor'))});
+test('motorcycle invoice shows the staff discount recorded at checkout',()=>{
+ const invoice=m.buildInvoice({...bike,price:750000,saleDiscount:30000},[],'invoice',profile);
+ assert.equal(invoice.items[0].amount,780000);
+ assert.equal(invoice.totals.find(t=>t.label==='Diskaun').value,'-'+motor.money(30000));
+ assert.equal(invoice.totals.find(t=>t.label==='Jumlah').value,motor.money(750000));
+});
