@@ -137,3 +137,10 @@ Keputusan operasi: kerja repair baharu tidak lagi melalui aliran Garage (Baharu 
 - **Garaj (lama)** kekal di hujung menu untuk menyelesaikan job dan baki pelanggan lama; butang job baharu kini membuka Servis di POS. Tiada data dipadam.
 
 Rollout: `supabase/pos-service.sql` selepas `catalogue-loan-and-photos.sql`. Ujian: `tests/pos-service.sql` (dalam `tests/run-pos-sql.mjs`, 25 migrasi).
+
+### Audit 28 November 2026 — pembetulan
+- Upah kerja ditaip sendiri oleh staf tanpa "POS: urus" dihadkan setiap baris (asal RM300; owner ubah di Tetapan katalog → POS: had upah kerja). Laporan tutup kaunter memaparkan alat ganti vs upah, dan upah ditaip sendiri ikut staf.
+- Carian plat tidak lagi mengisi nama/telefon pelanggan secara senyap; staf tekan "Guna pelanggan lepas" selepas mengesahkan pemilik.
+- Kos alat ganti menggunakan purata berwajaran semasa terima stok (bukan harga terakhir).
+- Ringkasan owner kini merangkumi jualan POS & servis, untung kasar POS dan kutipan POS.
+- Invois A4 jualan dibatalkan menunjukkan baki RM0 dan amaun dipulangkan.

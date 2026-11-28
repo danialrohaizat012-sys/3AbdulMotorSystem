@@ -1,5 +1,5 @@
 import type {Vehicle} from './motor';
-export type BusinessSettings={id:number;whatsappPhone:string;whatsappTemplate:string;version:number;tiktokUrl?:string;facebookUrl?:string;mapsUrl?:string;footerWhatsappUrl?:string;loanRateBp?:number|null;loanDownPct?:number;loanMaxMonths?:number};
+export type BusinessSettings={id:number;whatsappPhone:string;whatsappTemplate:string;version:number;tiktokUrl?:string;facebookUrl?:string;mapsUrl?:string;footerWhatsappUrl?:string;loanRateBp?:number|null;loanDownPct?:number;loanMaxMonths?:number;posLabourMax?:number};
 export const defaultTemplate='Hi 3 Abdul Motor, saya berminat dengan {jenama} {model} ({tahun}), harga {harga}, status {status}. Boleh saya dapatkan maklumat lanjut? {link}';
 export function stockLink(id:number){return location.origin+location.pathname+'#catalogue?motor='+id}
 export function normalizePhone(value:string){let phone=value.replace(/[^0-9]/g,'');if(phone.startsWith('0'))phone='60'+phone.slice(1);return phone}
