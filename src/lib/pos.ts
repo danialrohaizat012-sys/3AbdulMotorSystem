@@ -52,3 +52,7 @@ export async function printPosInvoice(sale:PosSale){const w=window.open('','_bla
   const doc=buildPosInvoice(sale,await loadInvoiceProfile());w.document.open();w.document.write(invoiceHtml(doc,location.origin+location.pathname+'logo-320.png'));w.document.close();
   const img=w.document.querySelector('img');const go=()=>{w.focus();w.print()};if(img&&!img.complete){img.addEventListener('load',go,{once:true});img.addEventListener('error',go,{once:true})}else setTimeout(go,50);
  }catch(e){w.close();throw e}}
+
+/** The same A4 invoice as a PDF file, for sending to the customer. */
+export async function posInvoicePdf(sale:PosSale){const [{buildPosInvoice},{loadInvoiceProfile},{invoicePdf,loadLogo}]=await Promise.all([import('./invoice-model'),import('./invoice-profile'),import('./service-invoice-pdf')]);
+ return invoicePdf(buildPosInvoice(sale,await loadInvoiceProfile()),await loadLogo(location.origin+location.pathname+'logo-320.png'))}

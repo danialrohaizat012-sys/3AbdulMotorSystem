@@ -36,6 +36,8 @@ do $$declare a bigint:=(select v from vp_t where k='tyre');v bigint:=(select v f
  begin perform public.vehicle_return_part(v,(select version from public.vehicles where id=v),mid,gen_random_uuid());raise exception 'FAIL double return';exception when raise_exception or unique_violation then if SQLERRM like 'FAIL%' then raise;end if;end;
  -- Parts cannot be forged on insert or taken for a sold bike.
  begin insert into public.vehicles(brand,model,year,price,published,prep_items) values('UAT PARTS','Forged',2022,100000,false,'[{"name":"x","kind":"part","qty":1,"rate":1,"moveId":1}]');raise exception 'FAIL forged insert';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
+ -- A bare 'vehicle' move through the API is rejected; only the RPCs may create one.
+ begin insert into public.pos_stock_moves(request_id,product_id,qty,kind,vehicle_id,note) values(gen_random_uuid(),a,-1,'vehicle',v,'direct');raise exception 'FAIL direct vehicle move';exception when raise_exception then if SQLERRM like 'FAIL%' or SQLERRM not like '%Ambil dari stok%' then raise;end if;end;
  begin insert into public.pos_stock_moves(request_id,product_id,qty,kind,note) values(gen_random_uuid(),a,1,'receive','no POS flags');raise exception 'FAIL editor received stock';exception when raise_exception or insufficient_privilege then if SQLERRM like 'FAIL%' then raise;end if;end;
 end$$;
 reset role;set local role anon;

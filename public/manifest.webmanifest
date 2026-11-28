@@ -3,7 +3,7 @@
   "name": "3 Abdul Motor",
   "short_name": "3 Abdul Motor",
   "description": "Katalog, inventori dan garaj 3 Abdul Motor",
-  "start_url": "./#inventory",
+  "start_url": "./#catalogue",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0b1220",
