@@ -21,4 +21,4 @@ export function flatRateLoan(price:number,down:number,rateBp:number,months:numbe
 /** Flat yearly rate (basis points) as the monthly rate lenders such as AEON quote, e.g. 1000 -> "0.833". */
 export const monthlyRateText=(rateBp:number)=>(rateBp/12/100).toFixed(3).replace(/0$/,'');
 /** Parses "5.5" / "5,5" (% per year) into basis points; NaN when outside 0–30%. */
-export function parseRate(text:string){const v=Number(text.replace(',','.').trim());if(!text.trim()||!Number.isFinite(v)||v<0||v>30)return NaN;return Math.round(v*100)}
+export function parseRate(text:string){const v=Number(text.replace(',','.').trim());if(!text.trim()||!Number.isFinite(v)||v<0||v>30)return NaN;return Math.round(v*1000)/10}

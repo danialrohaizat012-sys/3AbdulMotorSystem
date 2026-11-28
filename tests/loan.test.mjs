@@ -10,3 +10,9 @@ test('deposit is clamped to the price and zero rate has no interest',()=>{assert
 test('rate input accepts comma or dot and rejects out-of-range values',()=>{assert.equal(m.parseRate('5.5'),550);assert.equal(m.parseRate('5,25'),525);assert.equal(m.parseRate('0'),0);assert.ok(Number.isNaN(m.parseRate('')));assert.ok(Number.isNaN(m.parseRate('31')));assert.ok(Number.isNaN(m.parseRate('abc')))});
 test('settings: calculator hidden until owner sets a rate; safe defaults otherwise',()=>{assert.equal(m.loanSettings(null).rateBp,null);assert.deepEqual(m.loanSettings({loanRateBp:600,loanDownPct:20,loanMaxMonths:48}),{rateBp:600,downPct:20,maxMonths:48});assert.deepEqual(m.loanSettings({loanRateBp:99999,loanDownPct:95,loanMaxMonths:50}),{rateBp:null,downPct:10,maxMonths:60});assert.deepEqual(m.tenureOptions(48),[12,24,36,48]);assert.equal(m.downFor(780000,10),78000);assert.equal(m.downFor(333333,10),33300)});
 test('monthly equivalent matches how AEON quotes rates',()=>{assert.equal(m.monthlyRateText(1000),'0.833');assert.equal(m.monthlyRateText(780),'0.65');assert.equal(m.monthlyRateText(450),'0.375');assert.equal(m.monthlyRateText(0),'0.00')});
+test('0.833% monthly is used exactly in the flat-rate calculation',()=>{
+ const rate=m.parseRate('9.996');
+ assert.equal(rate,999.6);
+ assert.equal(m.monthlyRateText(rate),'0.833');
+ assert.equal(m.flatRateLoan(1000000,0,rate,60).interest,499800);
+});
