@@ -12,8 +12,8 @@ import {can} from '../lib/staff';
 import type {StaffProfile} from '../lib/staff';
 
 type PayChoice='full'|'deposit'|'none';
-type Method='cash'|'transfer'|'card';
-const methodLabels:Record<Method,string>={cash:'Tunai',transfer:'Transfer',card:'Kad'};
+type Method='cash'|'transfer'|'card'|'split';
+const methodLabels:Record<Method,string>={cash:'Tunai',transfer:'Transfer',card:'Kad',split:'Tunai + Transfer'};
 const localNow=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)};
 
 /** Prominent entry point on an unsold stock record. */
@@ -33,6 +33,7 @@ export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicl
  const owner=staff?.role==='owner';const takeMoney=can(staff,'receive_payments');
  const [buyer,setBuyer]=useState(vehicle.buyer||'');const [phone,setPhone]=useState(vehicle.buyerPhone||'');const [price,setPrice]=useState(vehicle.price);
  const [choice,setChoice]=useState<PayChoice>(takeMoney?'full':'none');const [deposit,setDeposit]=useState(0);const [method,setMethod]=useState<Method>('cash');
+ const [cashAmount,setCashAmount]=useState(0);
  const [more,setMore]=useState(false);const [paidAt,setPaidAt]=useState(localNow());const [note,setNote]=useState('');
  const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [result,setResult]=useState<SaleResult|null>(null);
  const request=useRef(crypto.randomUUID());
@@ -41,12 +42,20 @@ export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicl
  async function submit(e:React.FormEvent){e.preventDefault();if(busy)return;setBusy(true);setError('');try{
   if(buyer.trim().length<2)throw Error('Isi nama pembeli.');if(phone.replace(/\D/g,'').length<9)throw Error('Isi nombor telefon pembeli.');
   if(choice==='deposit'&&(deposit<=0||deposit>=balance))throw Error('Deposit mesti lebih daripada RM0 dan kurang daripada baki. Pilih "Bayar penuh" untuk bayaran penuh.');
+  const split=amount>0&&method==='split';
+  if(split&&(!Number.isSafeInteger(cashAmount)||cashAmount<=0||cashAmount>=amount))throw Error('Isi amaun tunai yang lebih daripada RM0 dan kurang daripada jumlah bayaran.');
   if(limit!==null&&amount>limit)throw Error('Amaun melebihi had bayaran anda ('+money(limit)+'). Minta owner merekodkan bayaran ini.');
   const paid=new Date(paidAt);if(amount>0&&(Number.isNaN(paid.getTime())||paid.getTime()>Date.now()))throw Error('Tarikh bayaran tidak boleh melebihi masa sekarang.');
-  const r=await sellVehicle(vehicle,{buyer,buyerPhone:phone,price,amount,method,paidAt:paid.toISOString(),note},request.current);
+  const r=await sellVehicle(vehicle,{buyer,buyerPhone:phone,price,amount,method:split?'split':method==='split'?'cash':method,cashAmount:split?cashAmount:undefined,paidAt:paid.toISOString(),note},request.current);
   setResult(r);toast.success(r.status==='sold'?'Jualan selesai. Status: Sold.':amount>0?'Deposit direkod. Status: Reserved.':'Tempahan disimpan.');await onDone();
  }catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- function print(type:'invoice'|'receipt'){printRecordFrom(()=>Promise.all([getRecord('vehicles',vehicle.id),loadPayments('vehicles',vehicle.id)]),type).catch(e=>toast.error((e as Error).message))}
+ function print(type:'invoice'|'receipt'){printRecordFrom(async()=>{
+  const [record,payments]=await Promise.all([getRecord('vehicles',vehicle.id),loadPayments('vehicles',vehicle.id)]);
+  if(type==='receipt'&&result?.transferPaymentId){
+   return [record,payments.filter(p=>p.id===result.paymentId||p.id===result.transferPaymentId)];
+  }
+  return [record,payments];
+ },type).catch(e=>toast.error((e as Error).message))}
  return <Dialog open onOpenChange={o=>{if(!o&&!busy)onClose()}}><DialogContent className="motor-dialog sale-dialog">
   <DialogHeader><DialogTitle>{result?'Jualan direkod':'Jual '+vehicle.brand+' '+vehicle.model}</DialogTitle><DialogDescription>{vehicleId(vehicle.id,vehicle.stockNo)}{vehicle.plate?' · '+vehicle.plate:''}</DialogDescription></DialogHeader>
   {result?<div className="sale-done"><BadgeCheck size={40}/><b>{result.status==='sold'?'SOLD · dibayar penuh':'RESERVED · baki '+money(result.balance)}</b><p>Dibayar {money(result.paid)} daripada {money(result.price)}</p>
@@ -61,6 +70,10 @@ export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicl
    {!takeMoney&&<p className="form-note">Anda tidak dibenarkan menerima bayaran. Simpan tempahan, kemudian owner atau staf kaunter rekod bayaran.</p>}
    {choice==='deposit'&&<NumberField label="Amaun deposit (RM)" cents value={deposit} onChange={setDeposit}/>}
    {amount>0&&<div className="sale-methods" role="radiogroup" aria-label="Kaedah bayaran">{(Object.keys(methodLabels) as Method[]).map(m=><button type="button" key={m} role="radio" aria-checked={method===m} className={method===m?'active':''} onClick={()=>setMethod(m)}>{methodLabels[m]}</button>)}</div>}
+   {amount>0&&method==='split'&&<div className="form-grid">
+    <NumberField label="Amaun tunai (RM)" cents value={cashAmount} onChange={setCashAmount}/>
+    <p className="sale-price">Baki dibayar melalui transfer <b>{money(Math.max(0,amount-cashAmount))}</b></p>
+   </div>}
    {amount>0&&<button type="button" className="quiet-link sale-more" onClick={()=>setMore(!more)}>{more?'Sembunyi pilihan lain':'Tukar tarikh bayaran / tambah nota'}</button>}
    {more&&amount>0&&<div className="form-grid"><Field label="Tarikh & masa bayaran"><input type="datetime-local" value={paidAt} max={localNow()} onChange={e=>setPaidAt(e.target.value)}/></Field><Field label="Nota (pilihan)"><input maxLength={500} value={note} onChange={e=>setNote(e.target.value)} placeholder="cth. No. rujukan transfer"/></Field></div>}
    <div className={'sale-summary '+(after===0&&price>0?'done':'')}><span>Selepas ini</span><b>{after===0?'SOLD · dibayar penuh':(amount>0?'RESERVED · baki '+money(after):'RESERVED · belum dibayar')}</b></div>
