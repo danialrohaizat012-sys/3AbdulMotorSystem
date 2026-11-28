@@ -5,7 +5,7 @@ import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '.
 import {Field,NumberField} from './motor-fields';
 import {sellVehicle,getRecord,loadPayments} from '../lib/records';
 import type {SaleResult} from '../lib/records';
-import {printRecord} from '../lib/print';
+import {printRecordFrom} from '../lib/print';
 import {money,vehicleId} from '../lib/motor';
 import type {Vehicle} from '../lib/motor';
 import {can} from '../lib/staff';
@@ -46,7 +46,7 @@ export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicl
   const r=await sellVehicle(vehicle,{buyer,buyerPhone:phone,price,amount,method,paidAt:paid.toISOString(),note},request.current);
   setResult(r);toast.success(r.status==='sold'?'Jualan selesai. Status: Sold.':amount>0?'Deposit direkod. Status: Reserved.':'Tempahan disimpan.');await onDone();
  }catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- async function print(type:'invoice'|'receipt'){try{const [fresh,payments]=await Promise.all([getRecord('vehicles',vehicle.id),loadPayments('vehicles',vehicle.id)]);await printRecord(fresh,payments,type)}catch(e){toast.error((e as Error).message)}}
+ function print(type:'invoice'|'receipt'){printRecordFrom(()=>Promise.all([getRecord('vehicles',vehicle.id),loadPayments('vehicles',vehicle.id)]),type).catch(e=>toast.error((e as Error).message))}
  return <Dialog open onOpenChange={o=>{if(!o&&!busy)onClose()}}><DialogContent className="motor-dialog sale-dialog">
   <DialogHeader><DialogTitle>{result?'Jualan direkod':'Jual '+vehicle.brand+' '+vehicle.model}</DialogTitle><DialogDescription>{vehicleId(vehicle.id,vehicle.stockNo)}{vehicle.plate?' · '+vehicle.plate:''}</DialogDescription></DialogHeader>
   {result?<div className="sale-done"><BadgeCheck size={40}/><b>{result.status==='sold'?'SOLD · dibayar penuh':'RESERVED · baki '+money(result.balance)}</b><p>Dibayar {money(result.paid)} daripada {money(result.price)}</p>

@@ -56,11 +56,13 @@ ${doc.notes.map(n=>`<div class="note"><b>${escape(n.title)}</b><p>${escape(n.tex
 </main></body></html>`;
 }
 
-export async function printRecord(record:Vehicle|Job,payments:Payment[],documentType:DocType='invoice'){
- // Open synchronously inside the click so pop-up blockers allow it, then fill it.
+export function printRecord(record:Vehicle|Job,payments:Payment[],documentType:DocType='invoice'){return printRecordFrom(async()=>[record,payments],documentType)}
+/** Opens the print window synchronously (inside the click, so iOS Safari allows it), then loads data and fills it. */
+export async function printRecordFrom(load:()=>Promise<[Vehicle|Job,Payment[]]>,documentType:DocType='invoice'){
  const w=window.open('','_blank');if(!w)throw Error('Benarkan pop-up untuk cetak atau simpan PDF.');
  w.document.write('<p style="font-family:Arial;padding:24px">Menyediakan dokumen…</p>');
  try{
+  const [record,payments]=await load();
   const doc=buildInvoice(record,payments,documentType,await loadInvoiceProfile());
   w.document.open();w.document.write(invoiceHtml(doc,location.origin+location.pathname+'logo-320.png'));w.document.close();
   const img=w.document.querySelector('img');const go=()=>{w.focus();w.print()};
