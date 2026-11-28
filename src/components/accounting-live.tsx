@@ -15,7 +15,7 @@ import '../accounting.css';
 import '../accounting-live.css';
 type Tab='overview'|'transactions'|'expenses'|'accounts'|'reports'|'debts'|'costs';
 const tabs=[{id:'overview' as const,label:'Ringkasan',icon:BarChart3},{id:'transactions' as const,label:'Transaksi',icon:ArrowLeftRight},{id:'expenses' as const,label:'Perbelanjaan',icon:Receipt},{id:'accounts' as const,label:'Akaun',icon:Wallet},{id:'debts' as const,label:'Baki pelanggan',icon:Wallet},{id:'costs' as const,label:'Kos operasi',icon:Wrench},{id:'reports' as const,label:'Laporan',icon:BookOpen}];
-const nav=[{href:'#catalogue',label:'Katalog',icon:Bike},{href:'#inventory',label:'Inventori',icon:Package},{href:'#garage',label:'Garage',icon:Wrench},{href:'#accounting',label:'Accounting',icon:BookOpen},{href:'#staff',label:'Akses staf',icon:ShieldCheck}];
+const nav=[{href:'#catalogue',label:'Katalog',icon:Bike},{href:'#inventory',label:'Inventori',icon:Package},{href:'#pos',label:'POS & Servis',icon:Wrench},{href:'#accounting',label:'Accounting',icon:BookOpen},{href:'#staff',label:'Akses staf',icon:ShieldCheck}];
 const dateText=(date:string)=>new Intl.DateTimeFormat('ms-MY',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Kuala_Lumpur'}).format(new Date(date.slice(0,10)+'T12:00:00+08:00'));
 const monthText=(month:string)=>new Intl.DateTimeFormat('ms-MY',{month:'long',year:'numeric',timeZone:'Asia/Kuala_Lumpur'}).format(new Date(month+'-01T12:00:00+08:00'));
 const accountName=(id:string|null,accounts:AccountingAccount[])=>accounts.find(a=>a.id===id)?.name||(id?'Akaun lama':'Belum dipadankan');

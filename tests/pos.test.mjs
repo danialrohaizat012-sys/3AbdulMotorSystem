@@ -17,5 +17,12 @@ test('checkout payload: single cash, split and validation',()=>{const c=m.addPro
  const s=m.buildCheckout(c,{...base,split:true,splitCash:2000,splitMethod:'card'});assert.deepEqual(s.payments,[{method:'cash',amount:2000},{method:'card',amount:3000}]);
  const t=m.buildCheckout(c,{...base,method:'transfer'});assert.equal(t.cash_tendered,null);
  assert.throws(()=>m.buildCheckout([],base),/kosong/);assert.throws(()=>m.buildCheckout(c,{...base,cashTendered:100}),/kurang/);assert.throws(()=>m.buildCheckout(c,{...base,split:true,splitCash:5000}),/kurang daripada jumlah/);
- const custom=m.buildCheckout(m.addCustom([],' Pelekat ',500),base);assert.deepEqual(custom.lines,[{name:'Pelekat',qty:1,unit_price:500}])});
+ const custom=m.buildCheckout(m.addCustom([],' Pelekat ',500),base);assert.deepEqual(custom.lines,[{name:'Pelekat',kind:'other',qty:1,unit_price:500}])});
 test('refreshing the cart applies new prices and drops inactive or sold-out products',()=>{const c=m.addProduct(m.addProduct([],oil,2).cart,labour).cart;const next=m.refreshCart(c,[{...oil,price:2800,stockQty:1},{...labour,active:false}]);assert.equal(next.length,1);assert.equal(next[0].qty,1);assert.equal(next[0].unitPrice,2800);assert.equal(m.refreshCart(m.setPrice(c,'p1',100),[oil,labour],true)[0].unitPrice,100);assert.equal(m.receiptNo(7),'POS-0007');assert.equal(m.receiptNo(12345),'POS-12345')});
+test('service checkout carries plate, bike, mechanic and line kinds; plate is required',()=>{const c=m.addCustom(m.addProduct([],oil).cart,'Upah servis',2500,'labour');
+ const p=m.buildCheckout(c,{...base,saleType:'service',service:{plate:' wxy 1234 ',bike:'Wave',mileage:23000,mechanic:'Abu',workNotes:' Tukar minyak '}});
+ assert.equal(p.sale_type,'service');assert.equal(p.plate,'WXY 1234');assert.equal(p.mileage,23000);assert.equal(p.work_notes,'Tukar minyak');
+ assert.deepEqual(p.lines,[{product_id:1,qty:1,unit_price:2500},{name:'Upah servis',kind:'labour',qty:1,unit_price:2500}]);
+ assert.equal(m.addProduct([],labour).cart[0].kind,'labour');assert.equal(m.addProduct([],oil).cart[0].kind,'part');
+ assert.throws(()=>m.buildCheckout(c,{...base,saleType:'service',service:{...m.blankService,plate:'  '}}),/plat/);
+ const counter=m.buildCheckout(c,{...base});assert.equal(counter.sale_type,'counter');assert.equal('plate' in counter,false)});
