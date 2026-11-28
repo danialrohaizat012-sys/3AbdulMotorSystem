@@ -41,10 +41,11 @@ export function invoicePdf(doc: InvoiceDoc, logo: string | null): File {
   let page = 1;
   const font = (size: number, bold = false, color = ink) => { pdf.setFont('helvetica', bold ? 'bold' : 'normal'); pdf.setFontSize(size); pdf.setTextColor(...color); };
   const footer = () => {
-    pdf.setDrawColor(...line); pdf.line(M, 287, R, 287);
-    font(7.5, false, muted);
-    pdf.text('Dokumen ini dijana oleh komputer.', M, 291);
-    pdf.text(doc.business.name + ' · ' + doc.number + ' · Halaman ' + page, R, 291, {align: 'right'});
+    pdf.setDrawColor(...ink); pdf.setLineWidth(.5); pdf.line(M, 284, R, 284); pdf.setLineWidth(.2);
+    font(7.8, true); pdf.text(doc.thanks, M, 288);
+    font(7.3, false, muted); if (doc.contact) pdf.text(doc.contact, M, 291.5);
+    pdf.text(doc.number + ' · Halaman ' + page, R, 288, {align: 'right'});
+    pdf.text('Dokumen dijana oleh komputer.', R, 291.5, {align: 'right'});
   };
   const ensure = (needed: number, header?: () => void) => {
     if (y + needed <= bottom) return;
@@ -62,7 +63,7 @@ export function invoicePdf(doc: InvoiceDoc, logo: string | null): File {
   for (const text of doc.business.lines) for (const part of pdf.splitTextToSize(text, 95)) { pdf.text(part, left, by); by += 3.8; }
   font(19, true); pdf.text(doc.title.toUpperCase(), R, 20, {align: 'right'});
   font(8.5, false, muted);
-  const meta: [string, string][] = [['No. dokumen', doc.number], ['Tarikh', doc.issuedAt], ['Rujukan', doc.reference]];
+  const meta = doc.meta;
   meta.forEach(([k, v], i) => { font(8.5, false, muted); pdf.text(k, R - 45, 27 + i * 4.5); font(8.5, true); pdf.text(v, R, 27 + i * 4.5, {align: 'right'}); });
   const [bg, fg] = tones[doc.status.tone];
   font(7.5, true, fg);
@@ -126,7 +127,15 @@ export function invoicePdf(doc: InvoiceDoc, logo: string | null): File {
     font(t.strong ? 10 : 9, !!t.strong, t.tone === 'due' ? color : ink); pdf.text(t.label, tx + 3, ty + 4.5);
     font(t.strong ? 10 : 9, !!t.strong, color); pdf.text(t.value, R - 3, ty + 4.5, {align: 'right'});
   });
-  y = top + Math.max(totalsH, doc.bank ? doc.bank.length * 4.2 + 8 : 0) + 6;
+  y = top + Math.max(totalsH, doc.bank ? doc.bank.length * 4.2 + 8 : 0) + 4;
+  // Amount in words, as on Malaysian invoices.
+  const wordsRows = pdf.splitTextToSize(doc.amountWords, R - M - 8) as string[];
+  ensure(9 + wordsRows.length * 4);
+  pdf.setFillColor(250, 251, 252); pdf.rect(M, y, R - M, 7 + wordsRows.length * 4, 'F');
+  pdf.setFillColor(232, 185, 35); pdf.rect(M, y, 0.9, 7 + wordsRows.length * 4, 'F');
+  font(6.8, false, muted); pdf.text((doc.type === 'receipt' ? 'JUMLAH DITERIMA' : 'JUMLAH') + ' DALAM PERKATAAN', M + 4, y + 4);
+  font(9, true); wordsRows.forEach((r, i) => pdf.text(r, M + 4, y + 8.5 + i * 4));
+  y += 14 + wordsRows.length * 4;
 
   // Payment ledger.
   if (doc.payments.length) {
@@ -156,9 +165,9 @@ export function invoicePdf(doc: InvoiceDoc, logo: string | null): File {
   }
 
   // Signatures pinned near the bottom of the last page.
-  ensure(22);
-  const sy = Math.max(y + 16, 262);
-  doc.signatures.forEach((s, i) => { const x = M + i * 75; pdf.setDrawColor(...ink); pdf.line(x, sy, x + 60, sy); font(8, false, muted); pdf.text(s, x, sy + 4.5); });
+  ensure(30);
+  const sy = Math.max(y + 16, 258);
+  doc.signatures.forEach((s, i) => { const x = M + i * 75; pdf.setDrawColor(...ink); pdf.line(x, sy, x + 60, sy); font(8.3, true); pdf.text(s, x, sy + 4.5); font(7.5, false, muted); pdf.text('Nama:', x, sy + 9); pdf.text('Tarikh:', x, sy + 13); });
   footer();
   return new File([pdf.output('blob')], doc.fileName, {type: 'application/pdf'});
 }
