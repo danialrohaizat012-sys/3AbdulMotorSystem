@@ -323,11 +323,12 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
   aspect-ratio: 1;
   justify-content: center;
   padding: 0;
-  border: 3px solid #fff;
+  border: 3px solid #ffffffb3;
   border-radius: 50%;
-  background: #a6172b;
+  background: #a6172bbf;
   color: #fff;
-  box-shadow: 0 4px 16px #0008;
+  text-shadow: 0 1px 3px #0009;
+  box-shadow: 0 3px 12px #0005;
   font-size: clamp(15px, 2.6vw, 26px);
   font-weight: 800;
   letter-spacing: .08em;
