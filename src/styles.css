@@ -204,7 +204,7 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .compact-original>span{font-size:10px;color:#d5ddca;padding:3px 7px;border:1px solid #70795055;border-radius:5px;background:#30392a}
 .compact-selling{display:block;font-size:29px;font-weight:750;line-height:1.2;letter-spacing:-.035em;color:#f2ce70}
 .compact-monthly{font-size:13px;color:#dce4eb;line-height:1.5;margin-top:2px}
-.compact-monthly b{font-size:clamp(22px,4.2vw,34px);font-weight:800;line-height:1.15}.compact-monthly span{color:#b8c5d0}
+.compact-monthly b{font-size:32px;font-weight:800;line-height:1.15}.compact-monthly span{color:#b8c5d0}
 .compact-terms{font-size:9px;line-height:1.4;color:#93a5b4}
 .catalogue-workspace .bike-bottom .btn{flex:none;margin-top:auto;min-height:46px;background:#e8c067;border-color:#e8c067;color:#17212a;border-radius:10px;font-size:14px;padding:10px 14px;justify-content:space-between}
 .catalogue-workspace .bike-bottom .btn:hover{background:#f4d586;border-color:#f4d586}
@@ -231,6 +231,7 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .catalogue-workspace .compact-selling{font-size:20px}
 .catalogue-workspace .compact-original del{font-size:12px}
 .catalogue-workspace .compact-monthly{font-size:12px;margin:0}
+.catalogue-workspace .compact-monthly b{font-size:24px}
 .catalogue-workspace .compact-terms{display:none}
 .catalogue-workspace .bike-bottom .btn{min-height:38px;padding:6px 10px;font-size:13px;border-radius:8px}
 .catalogue-hero{padding:26px 20px!important}
