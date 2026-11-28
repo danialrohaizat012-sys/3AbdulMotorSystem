@@ -28,7 +28,7 @@ Currency is integer cents. Catalogue has a separate safe projection containing n
 - Sold requires a positive price, buyer name/phone and full payment. Only the owner can change an existing sale price or reopen Sold. Active plate duplicates require a recorded reason; active chassis numbers are unique.
 - Garage work and payment states are separate. Charged work requires recorded customer approval of the current estimate; charge edits reset approval. Free work requires a reason. Collection requires Ready; unpaid collection requires owner approval with reason and actor/time. Archived jobs are retrieved through explicit plate, phone or customer history search.
 - Save operations match the record version. A stale draft cannot overwrite another staff edit or newly recorded payment. The editor offers an explicit discard-and-reload action.
-- Inventory supports supplier details, chassis, itemized preparation costs, inspection and up to five compressed photos. Cancelled/replaced photos are removed when unreferenced; manual cleanup removes unattached photos older than two hours. Storage policies prevent deletion of attached photos.
+- Inventory supports supplier details, chassis, itemized preparation costs, inspection and up to ten compressed photos. Cancelled/replaced photos are removed when unreferenced; manual cleanup removes unattached photos older than two hours. Storage policies prevent deletion of attached photos.
 - **Inventori → Tetapan WhatsApp** controls the catalogue number and template. A blank number hides the WhatsApp action. Supported placeholders: `{jenama}`, `{model}`, `{tahun}`, `{harga}`, `{status}`, `{id}`, `{link}`. The message is previewed before saving. Phone numbers use international digits; Malaysian leading 0 is normalized to 60. Each published motorcycle has a shareable catalogue link and photo gallery.
 - Record details provide printable sales/service invoices, payment receipts and service estimates (browser Print / Save as PDF). Customer agreement is a staff-entered record of approval; the system does not send or obtain agreement automatically.
 - Owner overview shows current Kuala Lumpur month sales, gross profit and net receipts; customer balances cover all records. Gross profit excludes overhead. The immutable audit records staff identity, action and changed field names for stock, jobs and settings.
@@ -115,3 +115,11 @@ Not in this phase: garage job parts deducting POS stock, partial returns (void i
 - **SEO:** tajuk & meta description, canonical, Open Graph/Twitter (`og-image.jpg`), `robots.txt`, `sitemap.xml`, data berstruktur `MotorcycleDealer` + `ItemList` stok awam (harga, keadaan, jarak — tiada data peribadi), tajuk halaman ikut motosikal yang dibuka, logo 757 KB → 30 KB WebP. Had: URL `#catalogue?motor=ID` ialah hash, jadi Google mengindeks satu halaman sahaja dan pratonton WhatsApp untuk setiap motor kekal pratonton umum.
 
 Rollout tambahan selepas `pos.sql`: `invoice-profile.sql`, `vehicle-quick-sale.sql`. `tests/run-pos-sql.mjs` kini menjalankan 23 migrasi dan empat regresi SQL.
+
+## Kalkulator pinjaman & 10 gambar (28 November 2026) — pending production rollout
+
+- **Kalkulator ansuran** dalam profil motosikal katalog: deposit (Tiada/10/20/30% atau amaun sendiri), tempoh 1–N tahun, kadar rata setahun. Kaedah kadar rata: faedah = pinjaman × kadar × tahun; bayaran bulanan dibundarkan ke atas. Butang WhatsApp menghantar anggaran pelanggan kepada kedai. Paparan bertanda "anggaran sahaja"; tidak dipaparkan untuk stok Sold.
+- Owner menetapkan **kadar asal, deposit asal dan tempoh maksimum** di Inventori → Tetapan katalog. Kalkulator **tersembunyi sehingga owner menetapkan kadar** — tiada kadar rekaan dipaparkan.
+- **Gambar setiap motosikal: 5 → 10** (borang, validasi dan guard database).
+
+Rollout: `supabase/catalogue-loan-and-photos.sql` selepas `vehicle-quick-sale.sql`. Sebelum migrasi, tetapan kalkulator memaparkan nota migrasi dan simpanan foto ke-6 hingga ke-10 ditolak oleh database dengan mesej "Maksimum 5 gambar".

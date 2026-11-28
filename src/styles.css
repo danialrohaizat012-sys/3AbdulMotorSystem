@@ -279,3 +279,22 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .catalogue-heading h1{white-space:nowrap;font-size:20px!important}
 .catalogue-results{font-size:12px!important;margin:4px 0 8px!important}
 }
+/* Loan calculator in the customer motorcycle profile */
+.loan-calculator{margin:18px 0;padding:16px;border:1px solid #34404b;border-radius:14px;background:#17202a;display:flex;flex-direction:column;gap:12px}
+.loan-calculator h3{display:flex;align-items:center;gap:8px;font-size:16px}
+.loan-calculator h3 svg{color:#ffd21c}
+.loan-result{background:#22303c;border-radius:12px;padding:12px 14px}
+.loan-result span{font-size:12px;color:#aebdcc}.loan-result strong{display:block;font-size:28px;color:#f2ce70;line-height:1.2}.loan-result small{font-size:14px;color:#c9d2db;font-weight:400}.loan-result p{font-size:12px;color:#aebdcc}
+.loan-field{display:flex;flex-direction:column;gap:6px}
+.loan-field label,.loan-label{font-size:13px;color:#c3cad3}
+.loan-field input{min-height:44px;font-size:16px;border-radius:9px;border:1px solid #3a4652;background:#101820;color:#f5f5f5;padding:0 12px}
+.loan-chips{display:flex;gap:6px;flex-wrap:wrap}
+.loan-chips button{min-height:40px;min-width:56px;padding:6px 12px;border-radius:999px;border:1px solid #3a4652;background:#1d2833;color:#e5ecf1;font-size:13px;font-weight:700}
+.loan-chips button[aria-pressed=true]{background:#ffd21c;border-color:#ffd21c;color:#141414}
+.loan-breakdown{margin:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.loan-breakdown div{display:flex;justify-content:space-between;gap:12px;color:#c9d2db}.loan-breakdown dd{margin:0;white-space:nowrap}
+.loan-breakdown .loan-total{border-top:1px solid #34404b;padding-top:6px;font-weight:700;color:#f5f5f5}
+.loan-note{font-size:11px;color:#93a5b4;line-height:1.5}
+.loan-ask{align-self:flex-start}
+/* Up to 10 photos: thumbnails wrap to a second row */
+.customer-thumbnails{grid-template-columns:repeat(5,minmax(0,1fr))!important}

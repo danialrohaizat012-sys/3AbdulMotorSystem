@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+const source=ts.transpileModule(readFileSync(new URL('../src/lib/loan.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
+const m=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+test('flat-rate hire purchase: RM7,800, 10% down, 5.5% for 3 years',()=>{const r=m.flatRateLoan(780000,78000,550,36);
+ assert.equal(r.loan,702000);assert.equal(r.interest,115830);assert.equal(r.total,817830);assert.equal(r.monthly,22718);assert.ok(r.monthly*36>=r.total)});
+test('deposit is clamped to the price and zero rate has no interest',()=>{assert.equal(m.flatRateLoan(500000,900000,550,12).loan,0);assert.equal(m.flatRateLoan(500000,-1,550,12).down,0);const z=m.flatRateLoan(120000,0,0,12);assert.equal(z.interest,0);assert.equal(z.monthly,10000)});
+test('rate input accepts comma or dot and rejects out-of-range values',()=>{assert.equal(m.parseRate('5.5'),550);assert.equal(m.parseRate('5,25'),525);assert.equal(m.parseRate('0'),0);assert.ok(Number.isNaN(m.parseRate('')));assert.ok(Number.isNaN(m.parseRate('31')));assert.ok(Number.isNaN(m.parseRate('abc')))});
+test('settings: calculator hidden until owner sets a rate; safe defaults otherwise',()=>{assert.equal(m.loanSettings(null).rateBp,null);assert.deepEqual(m.loanSettings({loanRateBp:600,loanDownPct:20,loanMaxMonths:48}),{rateBp:600,downPct:20,maxMonths:48});assert.deepEqual(m.loanSettings({loanRateBp:99999,loanDownPct:95,loanMaxMonths:50}),{rateBp:null,downPct:10,maxMonths:60});assert.deepEqual(m.tenureOptions(48),[12,24,36,48]);assert.equal(m.downFor(780000,10),78000);assert.equal(m.downFor(333333,10),33300)});
