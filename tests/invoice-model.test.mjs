@@ -29,3 +29,14 @@ test('POS service sale prints as a service invoice with work notes and line kind
  const d=m.buildPosInvoice(sale,profile);assert.equal(d.title,'Invois Servis');assert.equal(d.number,'INV-POS-0042');assert.equal(d.billTo.lines[0],'Pelanggan walk-in');assert.deepEqual(d.items.map(i=>i.detail),['Alat ganti','Upah kerja']);
  assert.equal(d.totals.find(t=>t.label==='Diskaun').value,'-'+motor.money(500));assert.equal(d.status.label,'DIBAYAR PENUH');assert.ok(d.notes.some(n=>n.title==='Kerja dibuat'));assert.equal(d.bank,null);
  const v=m.buildPosInvoice({...sale,saleType:'counter',status:'voided',voidReason:'Pulang barang',paid:0},profile);assert.equal(v.status.label,'DIBATALKAN');assert.equal(v.totals.find(t=>t.label==='Baki perlu dibayar').value,motor.money(0));assert.ok(v.totals.some(t=>t.label==='Dipulangkan kepada pelanggan'))});
+test('amount in Malay words as printed on Malaysian invoices',()=>{
+ assert.equal(m.ringgitWords(780000),'Ringgit Malaysia Tujuh Ribu Lapan Ratus Sahaja');
+ assert.equal(m.ringgitWords(19550),'Ringgit Malaysia Seratus Sembilan Puluh Lima Dan Lima Puluh Sen Sahaja');
+ assert.equal(m.ringgitWords(1101100),'Ringgit Malaysia Sebelas Ribu Sebelas Sahaja');
+ assert.equal(m.ringgitWords(1200000000),'Ringgit Malaysia Dua Belas Juta Sahaja');
+ assert.equal(m.ringgitWords(100000),'Ringgit Malaysia Seribu Sahaja');
+ assert.equal(m.ringgitWords(0),'Ringgit Malaysia Kosong Sahaja');
+ assert.equal(m.ringgitWords(1),'Ringgit Malaysia Kosong Dan Satu Sen Sahaja')});
+test('invoice meta uses dates without time and the sale date; vehicle item does not repeat plate/chassis',()=>{const d=m.buildInvoice({...bike,soldAt:'2026-11-25T04:00:00Z'},[],'invoice',profile,new Date('2026-11-28T02:00:00Z'));
+ assert.deepEqual(d.meta,[['No. invois','INV-3AM-0033'],['Tarikh invois','28 November 2026'],['Tarikh jualan','25 November 2026']]);
+ assert.ok(!d.items[0].detail.includes('ABC 123'));assert.equal(d.amountWords,m.ringgitWords(780000));assert.ok(d.thanks.includes('3 Abdul Motor'))});

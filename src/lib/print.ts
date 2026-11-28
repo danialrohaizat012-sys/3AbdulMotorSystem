@@ -31,8 +31,9 @@ table.items{width:100%;border-collapse:collapse}
 h4{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#6a7681;margin:20px 0 6px}
 table.ledger{width:100%;border-collapse:collapse;font-size:11.5px}.ledger th{text-align:left;border-bottom:1.5px solid #1d2731;padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#56626e}.ledger td{padding:6px 8px;border-bottom:1px solid #e6eaee;vertical-align:top}
 .note{margin-top:12px;font-size:11.5px}.note b{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#6a7681}.note p{margin:2px 0 0;white-space:pre-wrap}
-.sign{display:flex;gap:40px;margin-top:auto;padding-top:36px}.sign div{flex:1;max-width:220px;border-top:1px solid #1d2731;padding-top:5px;font-size:11px;color:#56626e}
-footer{margin-top:18px;padding-top:8px;border-top:1px solid #e6eaee;display:flex;justify-content:space-between;font-size:10px;color:#8a949e}
+.words{margin:10px 0 0;padding:8px 12px;border-left:3px solid #e8b923;background:#fafbfc;font-size:12px;font-weight:700}.words span{display:block;font-size:9.5px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:#6a7681}
+.sign{display:flex;gap:40px;margin-top:auto;padding-top:40px}.sign div{flex:1;max-width:230px;border-top:1px solid #1d2731;padding-top:6px;font-size:11px;color:#56626e;display:flex;flex-direction:column;gap:6px}.sign b{color:#1d2731;font-size:11.5px}
+footer{margin-top:20px;padding-top:10px;border-top:2px solid #1d2731;display:flex;justify-content:space-between;gap:16px;font-size:10px;color:#6a7681}footer div{display:flex;flex-direction:column;gap:2px}footer b{color:#1d2731;font-size:10.5px}footer .r{text-align:right}
 tr{break-inside:avoid}
 @page{size:A4;margin:0}@media print{body{background:#fff}.page{margin:0;box-shadow:none;min-height:296mm}}`;
 
@@ -44,15 +45,16 @@ export function invoiceHtml(doc:InvoiceDoc,logoUrl:string){
  const bank=doc.bank?`<div class="bank"><h3>Cara bayaran</h3>${lines(doc.bank)}</div>`:'<div></div>';
  return `<!doctype html><html lang="ms"><head><meta charset="utf-8"><title>${escape(doc.title+' '+doc.number)}</title><style>${css}</style></head><body><main class="page">
 <section class="top"><div class="brand"><img src="${escape(logoUrl)}" alt=""><div><h1>${escape(doc.business.name)}</h1><p>${lines(doc.business.lines)}</p></div></div>
-<div class="doc"><h2>${escape(doc.title)}</h2><table><tr><td>No. dokumen</td><td>${escape(doc.number)}</td></tr><tr><td>Tarikh</td><td>${escape(doc.issuedAt)}</td></tr><tr><td>Rujukan</td><td>${escape(doc.reference)}</td></tr></table><span class="badge ${doc.status.tone}">${escape(doc.status.label)}</span></div></section>
+<div class="doc"><h2>${escape(doc.title)}</h2><table>${doc.meta.map(([k,v])=>`<tr><td>${escape(k)}</td><td>${escape(v)}</td></tr>`).join('')}</table><span class="badge ${doc.status.tone}">${escape(doc.status.label)}</span></div></section>
 <div class="bar"></div>
 <section class="parties"><div class="box"><h3>${escape(doc.billTo.title)}</h3><p>${doc.billTo.lines.map((l,i)=>i===0?'<b>'+escape(l)+'</b>':escape(l)).join('<br/>')}</p></div><div class="box"><h3>${escape(doc.subject.title)}</h3><p>${lines(doc.subject.lines)}</p></div></section>
 <table class="items"><thead><tr><th class="c" style="width:34px">No.</th><th>Perkara</th><th class="c" style="width:60px">Kuantiti</th><th class="num" style="width:110px">Harga seunit</th><th class="num" style="width:110px">Amaun</th></tr></thead><tbody>${item}</tbody></table>
 <section class="summary">${bank}<table class="totals">${totals}</table></section>
+<p class="words"><span>${doc.type==='receipt'?'Jumlah diterima':'Jumlah'} dalam perkataan</span>${escape(doc.amountWords)}</p>
 ${ledger}
 ${doc.notes.map(n=>`<div class="note"><b>${escape(n.title)}</b><p>${escape(n.text)}</p></div>`).join('')}
-<section class="sign">${doc.signatures.map(s=>`<div>${escape(s)}</div>`).join('')}</section>
-<footer><span>Dokumen ini dijana oleh komputer.</span><span>${escape(doc.business.name)} · ${escape(doc.number)}</span></footer>
+<section class="sign">${doc.signatures.map(s=>`<div><b>${escape(s)}</b><span>Nama:</span><span>Tarikh:</span></div>`).join('')}</section>
+<footer><div><b>${escape(doc.thanks)}</b>${doc.contact?`<span>${escape(doc.contact)}</span>`:''}</div><div class="r"><span>${escape(doc.number)}</span><span>Dokumen dijana oleh komputer.</span></div></footer>
 </main></body></html>`;
 }
 
