@@ -3,7 +3,7 @@ import {Calculator,MessageCircle} from 'lucide-react';
 import {money} from '@/lib/motor';
 import type {Vehicle} from '@/lib/motor';
 import type {BusinessSettings} from '@/lib/business';
-import {loanSettings,tenureOptions,downFor,flatRateLoan,parseRate} from '@/lib/loan';
+import {loanSettings,tenureOptions,downFor,flatRateLoan,parseRate,monthlyRateText} from '@/lib/loan';
 
 /** Customer-facing hire-purchase estimate. Hidden until the owner sets a default rate. */
 export function LoanCalculator({vehicle,settings}:{vehicle:Vehicle;settings:BusinessSettings|null}){
@@ -25,8 +25,8 @@ export function LoanCalculator({vehicle,settings}:{vehicle:Vehicle;settings:Busi
   <div className="loan-field"><label htmlFor={'loan-down-'+vehicle.id}>Deposit (RM)</label><input id={'loan-down-'+vehicle.id} inputMode="decimal" value={downText} onChange={e=>{setDownText(e.target.value);const v=Math.round(Number(e.target.value.replace(/[^0-9.]/g,''))*100);if(Number.isFinite(v))setDown(Math.min(Math.max(0,v),vehicle.price))}}/>
    <div className="loan-chips" role="group" aria-label="Deposit cepat">{[0,10,20,30].map(p=><button type="button" key={p} aria-pressed={down===downFor(vehicle.price,p)} onClick={()=>setDownCents(downFor(vehicle.price,p))}>{p===0?'Tiada':p+'%'}</button>)}</div></div>
   <div className="loan-field"><span className="loan-label">Tempoh</span><div className="loan-chips" role="radiogroup" aria-label="Tempoh pinjaman">{options.map(m=><button type="button" role="radio" key={m} aria-checked={months===m} aria-pressed={months===m} onClick={()=>setMonths(m)}>{m/12} thn</button>)}</div></div>
-  <div className="loan-field loan-rate"><label htmlFor={'loan-rate-'+vehicle.id}>Kadar rata setahun (%)</label><input id={'loan-rate-'+vehicle.id} inputMode="decimal" value={rateText} onChange={e=>setRateText(e.target.value)} aria-invalid={!validRate}/>{!validRate&&<small className="form-error">Masukkan kadar 0–30%.</small>}</div>
-  <dl className="loan-breakdown"><div><dt>Harga</dt><dd>{money(vehicle.price)}</dd></div><div><dt>Deposit</dt><dd>-{money(r.down)}</dd></div><div><dt>Jumlah pinjaman</dt><dd>{money(r.loan)}</dd></div><div><dt>Faedah ({r.ratePct}% × {r.months/12} thn)</dt><dd>{money(r.interest)}</dd></div><div className="loan-total"><dt>Jumlah bayaran balik</dt><dd>{money(r.total)}</dd></div></dl>
+  <div className="loan-field loan-rate"><label htmlFor={'loan-rate-'+vehicle.id}>Kadar rata setahun (%)</label><input id={'loan-rate-'+vehicle.id} inputMode="decimal" value={rateText} onChange={e=>setRateText(e.target.value)} aria-invalid={!validRate}/>{validRate?<small className="loan-monthly">≈ {monthlyRateText(rateBp)}% sebulan (cara pembiaya seperti AEON memaparkan kadar)</small>:<small className="form-error">Masukkan kadar 0–30%.</small>}</div>
+  <dl className="loan-breakdown"><div><dt>Harga</dt><dd>{money(vehicle.price)}</dd></div><div><dt>Deposit</dt><dd>-{money(r.down)}</dd></div><div><dt>Jumlah pinjaman</dt><dd>{money(r.loan)}</dd></div><div><dt>Faedah ({r.ratePct}% setahun · {monthlyRateText(r.ratePct*100)}% sebulan × {r.months} bln)</dt><dd>{money(r.interest)}</dd></div><div className="loan-total"><dt>Jumlah bayaran balik</dt><dd>{money(r.total)}</dd></div></dl>
   <p className="loan-note">Anggaran sahaja menggunakan kadar rata. Kadar sebenar, deposit dan kelulusan tertakluk kepada bank atau syarikat pembiayaan.</p>
   {wa&&<a className="btn subtle loan-ask" target="_blank" rel="noopener noreferrer" href={wa}><MessageCircle size={16}/>Tanya pembiayaan di WhatsApp</a>}
  </section>;
