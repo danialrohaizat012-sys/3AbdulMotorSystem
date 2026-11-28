@@ -1,6 +1,7 @@
 import {useEffect,useState,useRef} from 'react';
 import {ChevronLeft,ChevronRight,Expand,Bike} from 'lucide-react';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from './ui/dialog';
+import {downFor,flatRateLoan,loanSettings,monthlyRateText} from '@/lib/loan';
 import {VehicleOffer} from './vehicle-offer';
 import {MotorBenefits} from './motor-benefits';
 import {ShareButton} from './share-button';
@@ -11,7 +12,28 @@ import {whatsappLink} from '@/lib/business';
 import type {BusinessSettings} from '@/lib/business';
 export function CatalogueProfile({vehicle,settings,preview=false}:{vehicle:Vehicle;settings:BusinessSettings|null;preview?:boolean}){
  const href=settings?whatsappLink(settings,vehicle):'';
- return <><div className="customer-profile-scroll"><div className="customer-profile-grid"><Gallery vehicle={vehicle}/><div className="customer-profile-info"><span className={'status '+vehicle.status}>{bikeStatuses[vehicle.status]}</span><div className="detail-stats"><span>Kategori<b>{conditionLabels[vehicle.bikeCondition||'pre_owned']}</b></span><span>Tahun<b>{vehicle.year}</b></span><span>Jarak<b>{vehicle.mileage.toLocaleString()} km</b></span></div><VehicleOffer vehicle={vehicle} detail/><h3 className="profile-description-title">Tentang motosikal ini</h3><p className="description">{vehicle.description||'Hubungi kedai untuk maklumat lanjut.'}</p><MotorBenefits freegift={vehicle.freegift}/></div></div></div><div className="customer-contact-bar"><div className="customer-contact-summary"><b>{vehicle.brand} {vehicle.model}</b><span>{money(vehicle.price)} <small>harga jualan</small></span></div>{!preview&&<ShareButton id={vehicle.id}/>}<a className="btn primary" target="_blank" rel="noopener noreferrer" href={href||undefined} aria-disabled={!href} onClick={e=>{if(!href)e.preventDefault()}}>{href?'Tanya melalui WhatsApp':'WhatsApp belum ditetapkan'}</a></div></>
+ return <><div className="customer-profile-scroll"><div className="customer-profile-grid"><Gallery vehicle={vehicle}/><div className="customer-profile-info"><span className={'status '+vehicle.status}>{bikeStatuses[vehicle.status]}</span><div className="detail-stats"><span>Kategori<b>{conditionLabels[vehicle.bikeCondition||'pre_owned']}</b></span><span>Tahun<b>{vehicle.year}</b></span><span>Jarak<b>{vehicle.mileage.toLocaleString()} km</b></span></div><VehicleOffer vehicle={vehicle} detail/><LoanDetails vehicle={vehicle} settings={settings}/><h3 className="profile-description-title">Tentang motosikal ini</h3><p className="description">{vehicle.description||'Hubungi kedai untuk maklumat lanjut.'}</p><MotorBenefits freegift={vehicle.freegift}/></div></div></div><div className="customer-contact-bar"><div className="customer-contact-summary"><b>{vehicle.brand} {vehicle.model}</b><span>{money(vehicle.price)} <small>harga jualan</small></span></div>{!preview&&<ShareButton id={vehicle.id}/>}<a className="btn primary" target="_blank" rel="noopener noreferrer" href={href||undefined} aria-disabled={!href} onClick={e=>{if(!href)e.preventDefault()}}>{href?'Tanya melalui WhatsApp':'WhatsApp belum ditetapkan'}</a></div></>
+}
+function LoanDetails({vehicle,settings}:{vehicle:Vehicle;settings:BusinessSettings|null}){
+ const {rateBp,downPct,maxMonths}=loanSettings(settings);
+ const terms=[24,36,48].filter(months=>months<=maxMonths);
+ if(rateBp===null||vehicle.status==='sold'||vehicle.price<=0||terms.length===0)return null;
+ const deposit=downFor(vehicle.price,downPct);
+ return <section className="mt-5" aria-label="Butiran pinjaman">
+  <h3 className="profile-description-title">Butiran pinjaman</h3>
+  <div className="mt-2 rounded-xl border border-slate-600 bg-slate-900/60 p-4">
+   <dl>
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-dashed border-slate-600 pb-3">
+     <dt className="text-slate-300">Deposit ({downPct}%)</dt><dd className="font-bold">{money(deposit)}</dd>
+    </div>
+    {terms.map(months=><div key={months} className="flex flex-wrap items-baseline justify-between gap-x-3 pt-3">
+     <dt className="text-slate-300">{months/12} tahun</dt>
+     <dd><strong className="text-lg text-yellow-300">{money(flatRateLoan(vehicle.price,deposit,rateBp,months).monthly)}</strong> <small>/ bulan</small></dd>
+    </div>)}
+   </dl>
+  </div>
+  <p className="mt-2 text-xs text-slate-300">Anggaran pada kadar rata {monthlyRateText(rateBp)}% sebulan. Kadar dan ansuran sebenar bergantung pada pembiaya.</p>
+ </section>;
 }
 function Gallery({vehicle}:{vehicle:Vehicle}){
  const keys=photoPaths(vehicle),signature=JSON.stringify(keys);const [urls,setUrls]=useState<Record<string,string>>({}),[active,setActive]=useState(0),[expanded,setExpanded]=useState(false),[failed,setFailed]=useState(false);const swiped=useRef(false);const touch=useRef<{x:number;y:number}|null>(null);
