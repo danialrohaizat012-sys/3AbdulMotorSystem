@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {Toaster,toast} from 'sonner';
-import {ArrowLeft,Search,X,Plus,Minus,Trash2,ShoppingCart,Package,Receipt,Wallet,Printer,MessageCircle,RefreshCw,ScanLine,AlertTriangle,PackagePlus,SlidersHorizontal,Pencil,Banknote,Wrench} from 'lucide-react';
+import {ArrowLeft,Search,X,Plus,Minus,Trash2,ShoppingCart,Package,Receipt,Wallet,Printer,MessageCircle,RefreshCw,ScanLine,AlertTriangle,PackagePlus,SlidersHorizontal,Pencil,Banknote,Wrench,Bike} from 'lucide-react';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from './ui/dialog';
 import {Switch} from './ui/switch';
 import {Field} from './motor-fields';
@@ -12,10 +12,14 @@ import type {PosProduct,CartLine,PayMethod,LineKind,SaleType,ServiceInfo} from '
 import {loadProducts,saveProduct,stockMove,loadMoves,loadOpenShift,loadShifts,openShift,closeShift,shiftReport,checkout,loadSales,loadSale,voidSale,printReceipt,posInvoicePdf,printWindow,serviceHistory,printPosInvoice,printShift,receiptWhatsapp} from '@/lib/pos';
 import type {PosSale,PosShift,PosMove,ShiftReport} from '@/lib/pos';
 import {PdfWhatsapp} from './pdf-whatsapp';
+import {VehicleSaleDialog} from './vehicle-sale';
+import {loadRecords,getRecord} from '@/lib/records';
+import {vehicleId,bikeStatuses} from '@/lib/motor';
+import type {Vehicle} from '@/lib/motor';
 import '../pos.css';
 
-type Tab='counter'|'products'|'sales'|'shift';
-const tabs:{id:Tab;label:string;icon:typeof Package}[]=[{id:'counter',label:'Kaunter',icon:ShoppingCart},{id:'products',label:'Produk & stok',icon:Package},{id:'sales',label:'Jualan',icon:Receipt},{id:'shift',label:'Tutup kaunter',icon:Wallet}];
+type Tab='counter'|'motor'|'products'|'sales'|'shift';
+const tabs:{id:Tab;label:string;icon:typeof Package}[]=[{id:'counter',label:'Kaunter',icon:ShoppingCart},{id:'motor',label:'Jual motor',icon:Bike},{id:'products',label:'Produk & stok',icon:Package},{id:'sales',label:'Jualan',icon:Receipt},{id:'shift',label:'Tutup kaunter',icon:Wallet}];
 const errorText=(e:unknown)=>e instanceof Error?e.message:'Operasi gagal. Cuba semula.';
 
 /** A ringgit input that keeps the staff's own typing (e.g. "12.") until it parses. */
@@ -31,7 +35,8 @@ export function PosPage({staff}:{staff:StaffProfile}){
  useEffect(()=>{void reload()},[reload]);
  useEffect(()=>{const id=Number(new URLSearchParams(location.hash.split('?')[1]||'').get('sale'));if(Number.isInteger(id)&&id>0)void loadSale(id).then(setOpenSale).catch(e=>toast.error(errorText(e)))},[]);
  const startService=new URLSearchParams(location.hash.split('?')[1]||'').get('service')==='1';
- const visibleTabs=tabs.filter(t=>t.id==='products'||seller||t.id==='sales');
+ const sellsBikes=can(staff,'inventory_edit');
+ const visibleTabs=tabs.filter(t=>t.id==='motor'?sellsBikes:t.id==='products'||seller||t.id==='sales');
  return <main className="workspace pos-workspace"><Toaster richColors position="top-center"/>
   <div className="pos-top"><div><a className="quiet-link" href={staff.role==='garage'?'#garage':'#inventory'}><ArrowLeft size={16}/>Kembali</a><h1>POS kaunter<span className="yellow-period">.</span></h1><p className="muted">{shift?<>Kaunter dibuka {dateText(shift.openedAt)} · {shift.openerName}</>:'Kaunter akan dibuka secara automatik pada jualan pertama.'}</p></div>
    <nav className="pos-tabs" aria-label="Bahagian POS">{visibleTabs.map(t=><button key={t.id} aria-pressed={tab===t.id} className={tab===t.id?'active':''} onClick={()=>setTab(t.id)}><t.icon size={18}/><span>{t.label}</span></button>)}</nav></div>
@@ -40,6 +45,7 @@ export function PosPage({staff}:{staff:StaffProfile}){
   {tab==='products'&&<Products products={products} loading={loading} manager={manager} onChanged={reload}/>}
   {tab==='sales'&&<Sales onOpen={setOpenSale}/>}
   {tab==='shift'&&seller&&<ShiftPanel shift={shift} onChanged={reload}/>}
+  {tab==='motor'&&sellsBikes&&<MotorSales staff={staff}/>}
   {openSale&&<SaleDialog fresh={justSold===openSale.id&&openSale.status==='completed'} sale={openSale} owner={owner} onClose={()=>{setOpenSale(null);setJustSold(null);if(location.hash.includes('sale='))history.replaceState(null,'','#pos')}} onChanged={s=>{setOpenSale(s);void reload()}}/>}
  </main>;
 }
@@ -205,4 +211,21 @@ export function PartsInventory({staff}:{staff:StaffProfile|null}){
  useEffect(()=>{if(allowed)void reload()},[allowed,reload]);
  if(!allowed)return <div className="demo-banner"><Package size={18}/><span>Akses alat ganti diberi oleh owner di Akses staf: <b>POS: urus</b> untuk tambah produk dan terima stok, atau <b>POS: jual</b> / <b>Inventori: edit</b> untuk lihat.</span></div>;
  return <div className="parts-inventory">{error&&<div className="error-banner" role="alert"><span>{error}</span><button className="btn subtle" onClick={()=>void reload()}><RefreshCw size={16}/>Cuba semula</button></div>}<Products products={products} loading={loading} manager={manager} onChanged={reload}/></div>;
+}
+
+/** Motorcycle sales from the counter: same one-step sale (buyer, full/deposit/reserve, payment, invoice) as Inventory. */
+function MotorSales({staff}:{staff:StaffProfile}){
+ const [bikes,setBikes]=useState<Vehicle[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [query,setQuery]=useState('');const [selling,setSelling]=useState<Vehicle|null>(null);
+ const load=useCallback(async(force=false)=>{setLoading(true);try{setBikes((await loadRecords('vehicles',force) as Vehicle[]).filter(v=>v.status!=='sold'&&v.price>0));setError('')}catch(e){setError(errorText(e))}finally{setLoading(false)}},[]);
+ useEffect(()=>{void load()},[load]);
+ const q=query.trim().toLowerCase();const shown=bikes.filter(v=>!q||(v.brand+' '+v.model+' '+v.year+' '+v.plate+' '+vehicleId(v.id,v.stockNo)+' '+v.buyer).toLowerCase().includes(q));
+ // Always sell from a fresh copy so the version check and paid amount are current.
+ async function open(v:Vehicle){try{setSelling(await getRecord('vehicles',v.id) as Vehicle)}catch(e){toast.error(errorText(e))}}
+ return <section>
+  <div className="filters"><div className="search"><Search size={18}/><input aria-label="Cari motosikal" placeholder="Cari jenama, model, plat atau no. stok…" value={query} onChange={e=>setQuery(e.target.value)}/></div><button className="btn subtle" disabled={loading} onClick={()=>void load(true)}><RefreshCw size={16}/>Muat semula</button></div>
+  <p className="form-note">Bayaran motor direkod pada rekod motosikal (bukan laci POS). Aksesori untuk pembeli yang sama: buat jualan kaunter berasingan.</p>
+  {error&&<p className="form-error" role="alert">{error}</p>}
+  {loading?<p className="muted">Memuatkan stok motosikal…</p>:<div className="pos-product-list">{shown.map(v=><button key={v.id} className="pos-product-row pos-sale-row" onClick={()=>void open(v)}><div><b>{v.brand} {v.model} ({v.year})</b><small>{vehicleId(v.id,v.stockNo)}{v.plate?' · '+v.plate:''} · {bikeStatuses[v.status]}{v.status==='reserved'&&v.buyer?' · '+v.buyer:''}</small></div><div className="pos-row-stock"><span>{v.paid>0?'Baki (dibayar '+money(v.paid)+')':'Harga'}</span><strong>{money(v.paid>0?v.price-v.paid:v.price)}</strong></div></button>)}{!shown.length&&<p className="muted">{bikes.length?'Tiada motosikal sepadan.':'Tiada motosikal Available atau Reserved dengan harga.'}</p>}</div>}
+  {selling&&<VehicleSaleDialog vehicle={selling} staff={staff} onClose={()=>setSelling(null)} onDone={async()=>{await load(true)}}/>}
+ </section>;
 }

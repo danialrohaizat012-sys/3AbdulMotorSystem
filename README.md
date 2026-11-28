@@ -165,3 +165,4 @@ Rollout: `supabase/vehicle-parts.sql` selepas `pos-service.sql`. Ujian: `tests/v
 - POS: jika jualan sudah direkod tetapi butiran gagal dimuatkan, mesej menyatakan jualan sudah direkod (cuba muat 3 kali). Banner "Pulangkan baki" kini selepas setiap jualan, tidak bergantung pada jam peranti.
 - Inventori → Alat ganti boleh dilihat oleh akaun "Inventori: edit".
 - Butang WhatsApp teks dilabel "Resit ringkas (teks)" supaya berbeza daripada panel invois PDF.
+- **POS → Jual motor:** senarai motosikal Available/Reserved (cari jenama, model, plat, no. stok) → dialog Jual motor yang sama seperti Inventori (pembeli, bayar penuh/deposit/tempah, kaedah, cetak invois). Bayaran direkod pada rekod motosikal, bukan laci POS. Memerlukan "Inventori: edit" (dan "Terima bayaran" untuk menerima wang).
