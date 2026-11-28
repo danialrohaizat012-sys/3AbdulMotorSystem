@@ -89,3 +89,10 @@
 .pos-suggest{white-space:normal;text-align:left}
 .pos-labour-by{display:flex;flex-direction:column;gap:2px;font-size:13px;color:#c9ccd1;background:#24282d;border-radius:9px;padding:10px 12px;margin-bottom:12px}
 .pos-labour-by>b{font-size:12px;color:#aeb3bb;text-transform:uppercase;letter-spacing:.06em}
+/* Send invoice PDF to WhatsApp */
+.pdf-whatsapp{margin:12px 0;padding:12px;border:1px solid #2f6b45;border-radius:11px;background:#13261b;display:flex;flex-direction:column;gap:10px}
+.pdf-whatsapp h3{display:flex;align-items:center;gap:8px;font-size:15px;color:#7ddc95}
+.pdf-steps{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:12px}
+.pdf-steps li{display:flex;flex-direction:column;gap:6px}.pdf-steps li>span{font-weight:700}
+.pdf-steps small{color:#aeb3bb;font-size:12px}
+.pdf-steps .action-row{margin:0}

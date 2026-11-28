@@ -158,3 +158,4 @@ Rollout: `supabase/vehicle-parts.sql` selepas `pos-service.sql`. Ujian: `tests/v
 - Resit dinomborkan ikut bayaran terkini (RES-PAY-xxxx); invois garaj lama memaparkan "Tarikh job dibuka".
 - Tukar troli dari Servis ke Jualan kaunter membuang upah kerja bagi akaun tanpa "POS: urus".
 - PWA dipasang pelanggan dibuka di katalog (start_url `#catalogue`).
+- **POS → hantar invois PDF ke WhatsApp:** dalam butiran jualan, "Sediakan PDF" → (1) Buka WhatsApp: chat pelanggan dibuka dengan mesej ringkas, walaupun nombor belum disimpan; (2) Kongsi PDF (telefon) atau Muat turun PDF (komputer, seret ke WhatsApp Web). WhatsApp tidak membenarkan laman web melampirkan fail secara automatik; penghantaran automatik memerlukan WhatsApp Business API (berbayar).

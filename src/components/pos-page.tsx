@@ -9,8 +9,9 @@ import type {StaffProfile} from '@/lib/staff';
 import {money,dateText} from '@/lib/motor';
 import {blankService,kindLabels,addProduct,addCustom,setQty,setPrice,refreshCart,cartTotals,changeDue,quickCash,parseRinggit,findByCode,searchProducts,categories,buildCheckout,receiptNo,lowStock,sellable,methodLabels,blankProduct} from '@/lib/pos-model';
 import type {PosProduct,CartLine,PayMethod,LineKind,SaleType,ServiceInfo} from '@/lib/pos-model';
-import {loadProducts,saveProduct,stockMove,loadMoves,loadOpenShift,loadShifts,openShift,closeShift,shiftReport,checkout,loadSales,loadSale,voidSale,printReceipt,printWindow,serviceHistory,printPosInvoice,printShift,receiptWhatsapp} from '@/lib/pos';
+import {loadProducts,saveProduct,stockMove,loadMoves,loadOpenShift,loadShifts,openShift,closeShift,shiftReport,checkout,loadSales,loadSale,voidSale,printReceipt,posInvoicePdf,printWindow,serviceHistory,printPosInvoice,printShift,receiptWhatsapp} from '@/lib/pos';
 import type {PosSale,PosShift,PosMove,ShiftReport} from '@/lib/pos';
+import {PdfWhatsapp} from './pdf-whatsapp';
 import '../pos.css';
 
 type Tab='counter'|'products'|'sales'|'shift';
@@ -172,6 +173,7 @@ function SaleDialog({sale,owner,onClose,onChanged}:{sale:PosSale;owner:boolean;o
   <ul className="pos-receipt-lines muted">{(sale.payments||[]).map(p=><li key={p.id}><span>{p.amount<0?'Refund ':''}{methodLabels[p.method]} · {p.receiverName}</span><span>{money(p.amount)}</span></li>)}</ul>
   {sale.status==='voided'&&<p className="form-note">Sebab batal: {sale.voidReason}</p>}
   <div className="action-row"><button className="btn primary" onClick={()=>{try{printReceipt(sale)}catch(e){toast.error(errorText(e))}}}><Printer size={16}/>Cetak resit</button><button className="btn subtle" onClick={()=>void printPosInvoice(sale).catch(e=>toast.error(errorText(e)))}><Printer size={16}/>Invois A4</button>{wa&&<a className="btn subtle" target="_blank" rel="noopener noreferrer" href={wa}><MessageCircle size={16}/>Hantar WhatsApp</a>}<button className="btn subtle" onClick={onClose}>{fresh?'Jualan seterusnya':'Tutup'}</button></div>
+  {sale.status==='completed'&&<PdfWhatsapp key={sale.id} prepare={()=>posInvoicePdf(sale)} phone={sale.customerPhone} message={'Salam '+(sale.customerName||'tuan/puan')+', ini invois '+(sale.saleType==='service'?'servis':'pembelian')+' '+receiptNo(sale.id)+(sale.saleType==='service'&&sale.plate?' untuk '+sale.plate:'')+' berjumlah '+money(sale.total)+'. Saya hantar PDF selepas mesej ini. Terima kasih daripada 3 Abdul Motor.'}/>}
   {owner&&sale.status==='completed'&&(!voiding?<button className="btn subtle pos-small" onClick={()=>setVoiding(true)}>Batalkan jualan (owner)</button>:<div className="pos-void"><Field label="Sebab pembatalan"><input autoFocus maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} placeholder="cth. Pelanggan pulangkan barang"/></Field><p className="form-note">Semua bayaran direkod sebagai refund dan stok dipulangkan. Tidak boleh diundur.</p><button className="btn primary" disabled={busy||reason.trim().length<5} onClick={()=>void doVoid()}>{busy?'Membatalkan…':'Sahkan pembatalan'}</button></div>)}
   {error&&<p className="form-error" role="alert">{error}</p>}
  </DialogContent></Dialog>;
