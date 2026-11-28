@@ -159,3 +159,9 @@ Rollout: `supabase/vehicle-parts.sql` selepas `pos-service.sql`. Ujian: `tests/v
 - Tukar troli dari Servis ke Jualan kaunter membuang upah kerja bagi akaun tanpa "POS: urus".
 - PWA dipasang pelanggan dibuka di katalog (start_url `#catalogue`).
 - **POS → hantar invois PDF ke WhatsApp:** dalam butiran jualan, "Sediakan PDF" → (1) Buka WhatsApp: chat pelanggan dibuka dengan mesej ringkas, walaupun nombor belum disimpan; (2) Kongsi PDF (telefon) atau Muat turun PDF (komputer, seret ke WhatsApp Web). WhatsApp tidak membenarkan laman web melampirkan fail secara automatik; penghantaran automatik memerlukan WhatsApp Business API (berbayar).
+
+### Audit 28 November 2026 (4) — pembetulan
+- `supabase/vehicle-buyer-guard.sql` (selepas `vehicle-parts-hardening.sql`): selepas bayaran diterima, pembeli motosikal hanya boleh ditukar oleh owner — deposit seorang pelanggan tidak boleh dibawa ke jualan pembeli lain. Dialog Jual motor mengunci nama/telefon pembeli bagi akaun bukan owner.
+- POS: jika jualan sudah direkod tetapi butiran gagal dimuatkan, mesej menyatakan jualan sudah direkod (cuba muat 3 kali). Banner "Pulangkan baki" kini selepas setiap jualan, tidak bergantung pada jam peranti.
+- Inventori → Alat ganti boleh dilihat oleh akaun "Inventori: edit".
+- Butang WhatsApp teks dilabel "Resit ringkas (teks)" supaya berbeza daripada panel invois PDF.

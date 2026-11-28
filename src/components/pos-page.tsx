@@ -26,7 +26,7 @@ export function PosPage({staff}:{staff:StaffProfile}){
  const [tab,setTab]=useState<Tab>(seller?'counter':'products');
  const [products,setProducts]=useState<PosProduct[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');
  const [shift,setShift]=useState<PosShift|null>(null);
- const [openSale,setOpenSale]=useState<PosSale|null>(null);
+ const [openSale,setOpenSale]=useState<PosSale|null>(null);const [justSold,setJustSold]=useState<number|null>(null);
  const reload=useCallback(async()=>{setLoading(true);try{const [p,s]=await Promise.all([loadProducts(),loadOpenShift()]);setProducts(p);setShift(s);setError('')}catch(e){setError(errorText(e))}finally{setLoading(false)}},[]);
  useEffect(()=>{void reload()},[reload]);
  useEffect(()=>{const id=Number(new URLSearchParams(location.hash.split('?')[1]||'').get('sale'));if(Number.isInteger(id)&&id>0)void loadSale(id).then(setOpenSale).catch(e=>toast.error(errorText(e)))},[]);
@@ -36,11 +36,11 @@ export function PosPage({staff}:{staff:StaffProfile}){
   <div className="pos-top"><div><a className="quiet-link" href={staff.role==='garage'?'#garage':'#inventory'}><ArrowLeft size={16}/>Kembali</a><h1>POS kaunter<span className="yellow-period">.</span></h1><p className="muted">{shift?<>Kaunter dibuka {dateText(shift.openedAt)} · {shift.openerName}</>:'Kaunter akan dibuka secara automatik pada jualan pertama.'}</p></div>
    <nav className="pos-tabs" aria-label="Bahagian POS">{visibleTabs.map(t=><button key={t.id} aria-pressed={tab===t.id} className={tab===t.id?'active':''} onClick={()=>setTab(t.id)}><t.icon size={18}/><span>{t.label}</span></button>)}</nav></div>
   {error&&<div className="error-banner" role="alert"><span>{error}</span><button className="btn subtle" onClick={()=>void reload()}><RefreshCw size={16}/>Cuba semula</button></div>}
-  {tab==='counter'&&seller&&<Counter initialService={startService} products={products} loading={loading} manager={manager} onSold={sale=>{void reload();setOpenSale(sale)}} onStale={reload}/>}
+  {tab==='counter'&&seller&&<Counter initialService={startService} products={products} loading={loading} manager={manager} onSold={sale=>{void reload();setJustSold(sale.id);setOpenSale(sale)}} onStale={reload}/>}
   {tab==='products'&&<Products products={products} loading={loading} manager={manager} onChanged={reload}/>}
   {tab==='sales'&&<Sales onOpen={setOpenSale}/>}
   {tab==='shift'&&seller&&<ShiftPanel shift={shift} onChanged={reload}/>}
-  {openSale&&<SaleDialog sale={openSale} owner={owner} onClose={()=>{setOpenSale(null);if(location.hash.includes('sale='))history.replaceState(null,'','#pos')}} onChanged={s=>{setOpenSale(s);void reload()}}/>}
+  {openSale&&<SaleDialog fresh={justSold===openSale.id&&openSale.status==='completed'} sale={openSale} owner={owner} onClose={()=>{setOpenSale(null);setJustSold(null);if(location.hash.includes('sale='))history.replaceState(null,'','#pos')}} onChanged={s=>{setOpenSale(s);void reload()}}/>}
  </main>;
 }
 
@@ -163,8 +163,8 @@ function Sales({onOpen}:{onOpen:(s:PosSale)=>void}){
  </section>;
 }
 
-function SaleDialog({sale,owner,onClose,onChanged}:{sale:PosSale;owner:boolean;onClose:()=>void;onChanged:(s:PosSale)=>void}){
- const [voiding,setVoiding]=useState(false);const [reason,setReason]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('');const wa=receiptWhatsapp(sale);const fresh=Date.now()-new Date(sale.createdAt).getTime()<120000&&sale.status==='completed';
+function SaleDialog({sale,owner,onClose,onChanged,fresh=false}:{sale:PosSale;owner:boolean;onClose:()=>void;onChanged:(s:PosSale)=>void;fresh?:boolean}){
+ const [voiding,setVoiding]=useState(false);const [reason,setReason]=useState('');const [busy,setBusy]=useState(false);const [error,setError]=useState('');const wa=receiptWhatsapp(sale);
  async function doVoid(){setBusy(true);setError('');try{onChanged(await voidSale(sale.id,reason));toast.success('Jualan dibatalkan. Bayaran direkod sebagai refund dan stok dipulangkan.');setVoiding(false)}catch(e){setError(errorText(e))}finally{setBusy(false)}}
  return <Dialog open onOpenChange={o=>{if(!o&&!busy)onClose()}}><DialogContent className="motor-dialog pos-sale-dialog"><DialogHeader><DialogTitle>{receiptNo(sale.id)}{sale.status==='voided'?' · Dibatalkan':''}</DialogTitle><DialogDescription>{dateText(sale.createdAt)} · {sale.cashierName}{sale.customerName?' · '+sale.customerName:''}</DialogDescription></DialogHeader>
   {sale.saleType==='service'&&<div className="pos-service-summary"><b><Wrench size={15}/>Servis · {sale.plate}{sale.bike?' · '+sale.bike:''}</b><span>{[sale.mechanic&&'Mekanik: '+sale.mechanic,sale.mileage?sale.mileage.toLocaleString('ms-MY')+' km':''].filter(Boolean).join(' · ')}</span>{sale.workNotes&&<p>{sale.workNotes}</p>}</div>}
@@ -172,7 +172,7 @@ function SaleDialog({sale,owner,onClose,onChanged}:{sale:PosSale;owner:boolean;o
   <ul className="pos-receipt-lines">{(sale.lines||[]).map(l=><li key={l.id}><span>{l.qty} × {l.name}{sale.saleType==='service'&&l.kind?<small className="pos-kind"> · {kindLabels[l.kind]}</small>:null}</span><span>{money(l.qty*l.unitPrice)}</span></li>)}{sale.discount>0&&<li><span>Diskaun</span><span>-{money(sale.discount)}</span></li>}<li className="pos-grand"><span>Jumlah</span><span>{money(sale.total)}</span></li></ul>
   <ul className="pos-receipt-lines muted">{(sale.payments||[]).map(p=><li key={p.id}><span>{p.amount<0?'Refund ':''}{methodLabels[p.method]} · {p.receiverName}</span><span>{money(p.amount)}</span></li>)}</ul>
   {sale.status==='voided'&&<p className="form-note">Sebab batal: {sale.voidReason}</p>}
-  <div className="action-row"><button className="btn primary" onClick={()=>{try{printReceipt(sale)}catch(e){toast.error(errorText(e))}}}><Printer size={16}/>Cetak resit</button><button className="btn subtle" onClick={()=>void printPosInvoice(sale).catch(e=>toast.error(errorText(e)))}><Printer size={16}/>Invois A4</button>{wa&&<a className="btn subtle" target="_blank" rel="noopener noreferrer" href={wa}><MessageCircle size={16}/>Hantar WhatsApp</a>}<button className="btn subtle" onClick={onClose}>{fresh?'Jualan seterusnya':'Tutup'}</button></div>
+  <div className="action-row"><button className="btn primary" onClick={()=>{try{printReceipt(sale)}catch(e){toast.error(errorText(e))}}}><Printer size={16}/>Cetak resit</button><button className="btn subtle" onClick={()=>void printPosInvoice(sale).catch(e=>toast.error(errorText(e)))}><Printer size={16}/>Invois A4</button>{wa&&<a className="btn subtle" target="_blank" rel="noopener noreferrer" href={wa}><MessageCircle size={16}/>Resit ringkas (teks)</a>}<button className="btn subtle" onClick={onClose}>{fresh?'Jualan seterusnya':'Tutup'}</button></div>
   {sale.status==='completed'&&<PdfWhatsapp key={sale.id} prepare={()=>posInvoicePdf(sale)} phone={sale.customerPhone} message={'Salam '+(sale.customerName||'tuan/puan')+', ini invois '+(sale.saleType==='service'?'servis':'pembelian')+' '+receiptNo(sale.id)+(sale.saleType==='service'&&sale.plate?' untuk '+sale.plate:'')+' berjumlah '+money(sale.total)+'. Saya hantar PDF selepas mesej ini. Terima kasih daripada 3 Abdul Motor.'}/>}
   {owner&&sale.status==='completed'&&(!voiding?<button className="btn subtle pos-small" onClick={()=>setVoiding(true)}>Batalkan jualan (owner)</button>:<div className="pos-void"><Field label="Sebab pembatalan"><input autoFocus maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} placeholder="cth. Pelanggan pulangkan barang"/></Field><p className="form-note">Semua bayaran direkod sebagai refund dan stok dipulangkan. Tidak boleh diundur.</p><button className="btn primary" disabled={busy||reason.trim().length<5} onClick={()=>void doVoid()}>{busy?'Membatalkan…':'Sahkan pembatalan'}</button></div>)}
   {error&&<p className="form-error" role="alert">{error}</p>}
@@ -198,10 +198,11 @@ function ShiftPanel({shift,onChanged}:{shift:PosShift|null;onChanged:()=>Promise
 
 /** Spare-parts stock inside the Inventory page; same products and stock ledger as the POS. */
 export function PartsInventory({staff}:{staff:StaffProfile|null}){
- const allowed=canAccess(staff,'pos');const manager=can(staff,'pos_manage');
+ // Inventory editors can read parts (they take parts for motorcycles); managing stays with POS managers.
+ const allowed=canAccess(staff,'pos')||can(staff,'inventory_edit');const manager=can(staff,'pos_manage');
  const [products,setProducts]=useState<PosProduct[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');
  const reload=useCallback(async()=>{setLoading(true);try{setProducts(await loadProducts());setError('')}catch(e){setError(errorText(e))}finally{setLoading(false)}},[]);
  useEffect(()=>{if(allowed)void reload()},[allowed,reload]);
- if(!allowed)return <div className="demo-banner"><Package size={18}/><span>Akses alat ganti diberi oleh owner di Akses staf: <b>POS: urus</b> untuk tambah produk dan terima stok, atau <b>POS: jual</b> untuk lihat sahaja.</span></div>;
+ if(!allowed)return <div className="demo-banner"><Package size={18}/><span>Akses alat ganti diberi oleh owner di Akses staf: <b>POS: urus</b> untuk tambah produk dan terima stok, atau <b>POS: jual</b> / <b>Inventori: edit</b> untuk lihat.</span></div>;
  return <div className="parts-inventory">{error&&<div className="error-banner" role="alert"><span>{error}</span><button className="btn subtle" onClick={()=>void reload()}><RefreshCw size={16}/>Cuba semula</button></div>}<Products products={products} loading={loading} manager={manager} onChanged={reload}/></div>;
 }
