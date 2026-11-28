@@ -151,3 +151,10 @@ Rollout: `supabase/pos-service.sql` selepas `catalogue-loan-and-photos.sql`. Uji
 - Kod admin (borang, bayaran, tetapan, jual motor, alat ganti, akses staf) dan validasi (zod) dimuat hanya apabila diperlukan. Fail JS utama katalog: 873 KB → 671 KB (257 KB → 199 KB dimampatkan).
 
 Rollout: `supabase/vehicle-parts.sql` selepas `pos-service.sql`. Ujian: `tests/vehicle-parts.sql` (dalam `tests/run-pos-sql.mjs`, 26 migrasi).
+
+### Audit 28 November 2026 (3) — pembetulan
+- `supabase/vehicle-parts-hardening.sql` (selepas `vehicle-parts.sql`; menggantikan `vehicle-parts-note-fix.sql`): pergerakan stok "untuk motor" hanya melalui butang Ambil dari stok / Pulangkan, bukan terus melalui API; nota stok motor >9999 tidak terpotong.
+- Muat semula automatik selepas deploy hanya apabila fail lama benar-benar tiada (404) dan peranti dalam talian; jika sambungan terputus, paparan meminta semak internet.
+- Resit dinomborkan ikut bayaran terkini (RES-PAY-xxxx); invois garaj lama memaparkan "Tarikh job dibuka".
+- Tukar troli dari Servis ke Jualan kaunter membuang upah kerja bagi akaun tanpa "POS: urus".
+- PWA dipasang pelanggan dibuka di katalog (start_url `#catalogue`).

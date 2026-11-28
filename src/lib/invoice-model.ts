@@ -33,7 +33,9 @@ const footer=(p:InvoiceProfile,name:string)=>({thanks:'Terima kasih atas urusan 
 export function buildInvoice(record:Vehicle|Job,payments:Payment[],type:DocType,profile:InvoiceProfile,now:Date=new Date()):InvoiceDoc{
  const vehicle='brand'in record;const ref=vehicle?vehicleId(record.id,record.stockNo):jobId(record.id);
  const prefix=type==='estimate'?'ANG':type==='receipt'?'RES':'INV';
- const number=prefix+'-'+ref;
+ // A receipt is numbered by its latest payment, so deposit and balance receipts differ.
+ const lastPay=type==='receipt'?[...payments].filter(p=>p.amount>0).sort((a,b)=>b.id-a.id)[0]:undefined;
+ const number=lastPay?'RES-PAY-'+String(lastPay.id).padStart(4,'0'):prefix+'-'+ref;
  const items:DocItem[]=vehicle?[{no:1,description:record.brand+' '+record.model,detail:[record.bikeCondition==='new'?'Baharu':'Terpakai','Tahun '+record.year,record.mileage?record.mileage.toLocaleString('ms-MY')+' km':''].filter(Boolean).join(' · '),qty:1,unitPrice:record.originalPrice&&record.originalPrice>record.price?record.originalPrice:record.price,amount:record.originalPrice&&record.originalPrice>record.price?record.originalPrice:record.price}]
   :parseLines(record.items).map((l,i)=>({no:i+1,description:l.name,detail:l.kind==='part'?'Alat ganti':'Upah kerja',qty:l.qty,unitPrice:l.rate,amount:l.qty*l.rate}));
  const subtotal=items.reduce((s,i)=>s+i.amount,0);
@@ -59,7 +61,7 @@ export function buildInvoice(record:Vehicle|Job,payments:Payment[],type:DocType,
  const bank=type!=='receipt'&&(balance>0||type==='estimate')&&profile.bankName&&profile.bankAccountNo?[profile.bankName,'No. akaun: '+profile.bankAccountNo,profile.bankAccountName&&'Nama: '+profile.bankAccountName,'Rujukan: '+number].filter(Boolean) as string[]:null;
  const title=type==='estimate'?'Anggaran Servis':type==='receipt'?'Resit Bayaran':vehicle?'Invois Jualan':'Invois Servis';
  const received=payments.reduce((t,p)=>t+p.amount,0);const dateLabel=type==='estimate'?'Tarikh anggaran':type==='receipt'?'Tarikh resit':'Tarikh invois';
- const meta:[string,string][]=[[type==='estimate'?'No. anggaran':type==='receipt'?'No. resit':'No. invois',number],[dateLabel,dateOnly(now.toISOString())],...(vehicle?(record.soldAt?[['Tarikh jualan',dateOnly(record.soldAt)] as [string,string]]:[]):[['Tarikh servis',dateOnly(record.updatedAt||record.createdAt)] as [string,string]])];
+ const meta:[string,string][]=[[type==='estimate'?'No. anggaran':type==='receipt'?'No. resit':'No. invois',number],[dateLabel,dateOnly(now.toISOString())],...(vehicle?(record.soldAt?[['Tarikh jualan',dateOnly(record.soldAt)] as [string,string]]:[]):[['Tarikh job dibuka',dateOnly(record.createdAt||record.updatedAt)] as [string,string]])];
  const bizName=clean(profile.businessName)||defaultProfile.businessName;
  return {meta,amountWords:ringgitWords(type==='receipt'?received:amount),...footer(profile,bizName),type,title,fileName:title.replace(/\s+/g,'-')+'-'+ref+'.pdf',number,reference:ref,issuedAt:dateText(now.toISOString()),status,
   business:{name:clean(profile.businessName)||defaultProfile.businessName,lines:business},billTo:{title:type==='receipt'?'Diterima daripada':vehicle?'Pembeli':'Pelanggan',lines:billTo.filter(Boolean)},subject,
