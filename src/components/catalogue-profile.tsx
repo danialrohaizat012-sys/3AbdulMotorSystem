@@ -4,7 +4,7 @@ import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '.
 import {VehicleOffer} from './vehicle-offer';
 import {MotorBenefits} from './motor-benefits';
 import {LoanCalculator} from './loan-calculator';
-import {ShareButton} from './operations-ui';
+import {ShareButton} from './share-button';
 import {photoPaths,signPhotos} from '@/lib/records';
 import {money,conditionLabels,bikeStatuses} from '@/lib/motor';
 import type {Vehicle} from '@/lib/motor';

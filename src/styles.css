@@ -298,3 +298,12 @@ body{background:#101418;color:#f5f7fa;font-family:Arial,Helvetica,sans-serif}
 .loan-ask{align-self:flex-start}
 /* Up to 10 photos: thumbnails wrap to a second row */
 .customer-thumbnails{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+/* Spare parts used for motorcycle preparation */
+.vehicle-parts ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.vehicle-parts li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;font-size:14px}
+.service-line.stock-linked{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px dashed #4a5563;border-radius:10px;background:#1b2027}
+.service-line.stock-linked div{display:flex;flex-direction:column}.service-line.stock-linked small{color:#aeb3bb;font-size:12px}
+.part-picker-list{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto;margin:10px 0}
+.part-picker-list button{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:52px;padding:8px 12px;border:1px solid #393e45;border-radius:9px;background:#24282d;color:#f5f5f5;text-align:left}
+.part-picker-list button small{display:block;color:#aeb3bb;font-size:12px}
+.part-picker-list button.active{border-color:#ffd21c;background:#3a3412}
