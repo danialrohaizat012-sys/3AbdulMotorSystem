@@ -130,7 +130,7 @@ function ProductEditor({initial,onClose,onSaved}:{initial:PosProduct;onClose:()=
    {p.trackStock&&<div className="form-grid">{!initial.id&&<Field label="Stok awal"><input type="number" min="0" max="100000" value={opening} onChange={e=>setOpening(Math.max(0,Math.trunc(Number(e.target.value))))}/></Field>}<Field label="Amaran stok rendah pada"><input type="number" min="0" max="100000" value={p.reorderLevel} onChange={e=>set('reorderLevel',Math.max(0,Math.trunc(Number(e.target.value))))}/></Field></div>}
    {!!initial.id&&<div className="switch-field"><span>Produk aktif (dijual di kaunter)</span><Switch checked={p.active} onCheckedChange={v=>set('active',v)}/></div>}
    {error&&<p className="form-error" role="alert">{error}</p>}<button className="btn primary" disabled={busy}>{busy?'Menyimpan…':'Simpan produk'}</button></form>
-  {moves.length>0&&<section className="pos-moves"><h3>Sejarah stok terkini</h3>{moves.map(m=><div key={m.id}><span>{({receive:'Terima',adjust:'Laras',sale:'Jual',void:'Batal jual'} as Record<string,string>)[m.kind]} {m.qty>0?'+':''}{m.qty}{m.saleId?' · '+receiptNo(m.saleId):''}{m.note?' · '+m.note:''}</span><small>{dateText(m.createdAt)} · {m.actorName} · baki {m.balanceAfter}</small></div>)}</section>}
+  {moves.length>0&&<section className="pos-moves"><h3>Sejarah stok terkini</h3>{moves.map(m=><div key={m.id}><span>{({receive:'Terima',adjust:'Laras',sale:'Jual',void:'Batal jual',vehicle:'Guna untuk motor',vehicle_return:'Pulang dari motor'} as Record<string,string>)[m.kind]} {m.qty>0?'+':''}{m.qty}{m.saleId?' · '+receiptNo(m.saleId):''}{m.note?' · '+m.note:''}</span><small>{dateText(m.createdAt)} · {m.actorName} · baki {m.balanceAfter}</small></div>)}</section>}
  </DialogContent></Dialog>;
 }
 

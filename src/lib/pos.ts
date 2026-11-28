@@ -7,7 +7,7 @@ export type PosSaleLine={kind?:'part'|'labour'|'other';id:number;productId:numbe
 export type PosPayment={id:number;amount:number;method:PayMethod;purpose:string;note:string;receiverName:string;createdAt:string;reversesId:number|null};
 export type PosSale={saleType?:'counter'|'service';bike?:string;plate?:string;mileage?:number|null;mechanic?:string;workNotes?:string;id:number;shiftId:number;customerName:string;customerPhone:string;note:string;subtotal:number;discount:number;total:number;paid:number;cashTendered:number|null;changeGiven:number;status:'completed'|'voided';voidReason:string;voidedAt:string|null;cashierName:string;createdAt:string;version:number;lines?:PosSaleLine[];payments?:PosPayment[]};
 export type PosShift={id:number;openerName:string;openedAt:string;openingFloat:number;closedAt:string|null;closerName:string;countedCash:number|null;expectedCash:number|null;note:string;version:number};
-export type PosMove={id:number;qty:number;kind:'receive'|'adjust'|'sale'|'void';unitCost:number|null;saleId:number|null;note:string;balanceAfter:number;actorName:string;createdAt:string};
+export type PosMove={id:number;qty:number;kind:'receive'|'adjust'|'sale'|'void'|'vehicle'|'vehicle_return';unitCost:number|null;saleId:number|null;note:string;balanceAfter:number;actorName:string;createdAt:string};
 export type ShiftReport={parts?:number;labour?:number;serviceCount?:number;labourBy?:{name:string;jobs?:number;amount:number}[];shift:Record<string,unknown>;salesCount:number;voidCount:number;gross:number;discount:number;net:number;cost:number;methods:Partial<Record<PayMethod,number>>;expectedCash:number;topItems:{name:string;qty:number;amount:number}[]};
 
 function client(){if(!supabase)throw Error('Sistem belum tersedia.');return supabase}

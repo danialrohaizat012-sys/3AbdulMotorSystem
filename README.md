@@ -144,3 +144,10 @@ Rollout: `supabase/pos-service.sql` selepas `catalogue-loan-and-photos.sql`. Uji
 - Kos alat ganti menggunakan purata berwajaran semasa terima stok (bukan harga terakhir).
 - Ringkasan owner kini merangkumi jualan POS & servis, untung kasar POS dan kutipan POS.
 - Invois A4 jualan dibatalkan menunjukkan baki RM0 dan amaun dipulangkan.
+
+## Alat ganti untuk persediaan motor & katalog lebih ringan (28 November 2026) — pending production rollout
+
+- Rekod motosikal (Inventori) → **Alat ganti untuk motor ini → Ambil dari stok**: stok alat ganti ditolak dan kos (harga kos purata) dicampur ke kos persediaan, jadi untung kasar motor tepat. **Pulangkan** mengembalikan stok dan membuang kos itu. Baris ini dikunci dalam borang edit motor; database memastikan ia sentiasa sepadan dengan ledger stok (`supabase/vehicle-parts.sql`, RPC `vehicle_use_part` / `vehicle_return_part`, invoker). Staf "Inventori: edit" boleh menggunakannya tanpa akses POS dan boleh membaca ledger stok penuh.
+- Kod admin (borang, bayaran, tetapan, jual motor, alat ganti, akses staf) dan validasi (zod) dimuat hanya apabila diperlukan. Fail JS utama katalog: 873 KB → 671 KB (257 KB → 199 KB dimampatkan).
+
+Rollout: `supabase/vehicle-parts.sql` selepas `pos-service.sql`. Ujian: `tests/vehicle-parts.sql` (dalam `tests/run-pos-sql.mjs`, 26 migrasi).
