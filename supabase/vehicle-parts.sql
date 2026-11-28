@@ -101,7 +101,7 @@ begin
  select * into p from public.pos_products where id=p_product;
  if p.id is null or not p.active then raise exception 'Alat ganti tidak aktif atau tidak dijumpai.';end if;
  insert into public.pos_stock_moves(request_id,product_id,qty,kind,vehicle_id,note,created_by)
-  values(p_request,p_product,-p_qty,'vehicle',p_vehicle,'Persediaan motosikal 3AM-'||lpad(coalesce(v.stock_no,v.id)::text,4,'0'),auth.uid()) returning * into m;
+  values(p_request,p_product,-p_qty,'vehicle',p_vehicle,'Persediaan motosikal 3AM-'||lpad(coalesce(v.stock_no,v.id)::text,greatest(4,length(coalesce(v.stock_no,v.id)::text)),'0'),auth.uid()) returning * into m;
  update public.vehicles set prep_items=prep_items||jsonb_build_array(jsonb_build_object('name',left('Alat ganti: '||p.name,120),'kind','part','qty',p_qty,'rate',m.unit_cost,'moveId',m.id)) where id=p_vehicle;
  return private.vehicle_parts_result(p_vehicle);
 end;$$;
@@ -118,7 +118,7 @@ begin
  select * into o from public.pos_stock_moves where id=p_move and vehicle_id=p_vehicle and kind='vehicle';
  if o.id is null then raise exception 'Alat ganti ini tidak dijumpai pada motosikal.';end if;
  insert into public.pos_stock_moves(request_id,product_id,qty,kind,vehicle_id,reverses_move_id,note,created_by)
-  values(p_request,o.product_id,-o.qty,'vehicle_return',p_vehicle,o.id,'Pulang dari motosikal 3AM-'||lpad(coalesce(v.stock_no,v.id)::text,4,'0'),auth.uid());
+  values(p_request,o.product_id,-o.qty,'vehicle_return',p_vehicle,o.id,'Pulang dari motosikal 3AM-'||lpad(coalesce(v.stock_no,v.id)::text,greatest(4,length(coalesce(v.stock_no,v.id)::text)),'0'),auth.uid());
  update public.vehicles set prep_items=(select coalesce(jsonb_agg(x order by n),'[]'::jsonb) from jsonb_array_elements(prep_items) with ordinality t(x,n) where (x->>'moveId') is distinct from o.id::text) where id=p_vehicle;
  return private.vehicle_parts_result(p_vehicle);
 end;$$;

@@ -9,7 +9,7 @@ import type {StaffProfile} from '@/lib/staff';
 import {money,dateText} from '@/lib/motor';
 import {blankService,kindLabels,addProduct,addCustom,setQty,setPrice,refreshCart,cartTotals,changeDue,quickCash,parseRinggit,findByCode,searchProducts,categories,buildCheckout,receiptNo,lowStock,sellable,methodLabels,blankProduct} from '@/lib/pos-model';
 import type {PosProduct,CartLine,PayMethod,LineKind,SaleType,ServiceInfo} from '@/lib/pos-model';
-import {loadProducts,saveProduct,stockMove,loadMoves,loadOpenShift,loadShifts,openShift,closeShift,shiftReport,checkout,loadSales,loadSale,voidSale,printReceipt,serviceHistory,printPosInvoice,printShift,receiptWhatsapp} from '@/lib/pos';
+import {loadProducts,saveProduct,stockMove,loadMoves,loadOpenShift,loadShifts,openShift,closeShift,shiftReport,checkout,loadSales,loadSale,voidSale,printReceipt,printWindow,serviceHistory,printPosInvoice,printShift,receiptWhatsapp} from '@/lib/pos';
 import type {PosSale,PosShift,PosMove,ShiftReport} from '@/lib/pos';
 import '../pos.css';
 
@@ -120,7 +120,7 @@ function ProductEditor({initial,onClose,onSaved}:{initial:PosProduct;onClose:()=
  useEffect(()=>{if(initial.id&&initial.trackStock)void loadMoves(initial.id).then(setMoves).catch(()=>{})},[initial]);
  const set=<K extends keyof PosProduct>(k:K,v:PosProduct[K])=>setP(x=>({...x,[k]:v}));
  async function save(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{if(!p.sku.trim()||!p.name.trim())throw Error('Isi SKU dan nama produk.');// A retry after the product was created only records the opening stock.
-  const saved=created.current??await saveProduct(p);if(!initial.id)created.current=saved;if(!initial.id&&saved.trackStock&&opening>0)await stockMove(saved.id,'receive',opening,'Stok awal',saved.cost,openingRequest.current);toast.success('Produk disimpan.');onSaved()}catch(e){setError(errorText(e))}finally{setBusy(false)}}
+  const saved=await saveProduct(created.current?{...p,id:created.current.id,version:created.current.version}:p);if(!initial.id)created.current=saved;if(!initial.id&&saved.trackStock&&opening>0)await stockMove(saved.id,'receive',opening,'Stok awal',saved.cost,openingRequest.current);toast.success('Produk disimpan.');onSaved()}catch(e){setError(errorText(e))}finally{setBusy(false)}}
  return <Dialog open onOpenChange={o=>{if(!o&&!busy)onClose()}}><DialogContent className="motor-dialog"><DialogHeader><DialogTitle>{initial.id?'Edit produk':'Produk baharu'}</DialogTitle><DialogDescription>Harga dalam RM. Stok berubah melalui jualan, terimaan atau pelarasan sahaja.</DialogDescription></DialogHeader>
   <form onSubmit={save}><Field label="Nama produk"><input required autoFocus maxLength={120} value={p.name} onChange={e=>set('name',e.target.value)}/></Field>
    <div className="form-grid"><Field label="SKU / kod"><input required maxLength={40} value={p.sku} onChange={e=>set('sku',e.target.value.toUpperCase().replace(/\s/g,'-'))} placeholder="cth. OIL-10W40"/></Field><Field label="Barcode (pilihan)"><input maxLength={64} inputMode="numeric" value={p.barcode} onChange={e=>set('barcode',e.target.value.trim())} placeholder="Scan di sini"/></Field>
@@ -182,7 +182,7 @@ function ShiftPanel({shift,onChanged}:{shift:PosShift|null;onChanged:()=>Promise
  const load=useCallback(async()=>{try{setHistory(await loadShifts());setReport(shift?await shiftReport(shift.id):null)}catch(e){setError(errorText(e))}},[shift]);
  useEffect(()=>{void load()},[load]);
  const variance=report&&counted!==null?counted-report.expectedCash:0;
- async function close(e:React.FormEvent){e.preventDefault();if(!shift||counted===null)return;setBusy(true);setError('');try{const closed=await closeShift(shift,counted,note);const final=await shiftReport(closed.id);toast.success('Kaunter ditutup.');try{printShift(final,closed)}catch{}setCounted(null);setNote('');await onChanged()}catch(e){setError(errorText(e))}finally{setBusy(false)}}
+ async function close(e:React.FormEvent){e.preventDefault();if(!shift||counted===null)return;const w=printWindow();setBusy(true);setError('');try{const closed=await closeShift(shift,counted,note);const final=await shiftReport(closed.id);toast.success('Kaunter ditutup.');try{printShift(final,closed,w)}catch{toast.warning('Benarkan pop-up untuk cetak laporan. Laporan boleh dicetak semula dari sejarah tutup kaunter.')}setCounted(null);setNote('');await onChanged()}catch(e){w?.close();setError(errorText(e))}finally{setBusy(false)}}
  async function open(){setBusy(true);setError('');try{await openShift(float??0);toast.success('Kaunter dibuka.');await onChanged()}catch(e){setError(errorText(e))}finally{setBusy(false)}}
  return <section className="pos-shift">
   {!shift?<div className="operation-panel"><h3>Kaunter belum dibuka</h3><p className="muted">Tidak perlu buka secara manual — jualan pertama membuka kaunter dengan float RM0. Buka di sini hanya jika ada duit float dalam laci.</p><div className="form-grid"><MoneyInput label="Duit float dalam laci (RM)" value={float} onChange={setFloat}/></div><button className="btn primary" disabled={busy} onClick={()=>void open()}>Buka kaunter</button></div>:
