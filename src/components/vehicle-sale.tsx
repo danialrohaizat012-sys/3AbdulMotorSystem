@@ -30,7 +30,7 @@ export function SaleCallToAction({vehicle,staff,onSold}:{vehicle:Vehicle;staff:S
 }
 
 export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicle;staff:StaffProfile|null;onClose:()=>void;onDone:()=>Promise<void>}){
- const owner=staff?.role==='owner';const takeMoney=can(staff,'receive_payments');
+ const owner=staff?.role==='owner';const takeMoney=can(staff,'receive_payments');const buyerLocked=vehicle.paid>0&&!!vehicle.buyer&&!owner;
  const [buyer,setBuyer]=useState(vehicle.buyer||'');const [phone,setPhone]=useState(vehicle.buyerPhone||'');const [price,setPrice]=useState(vehicle.price);
  const [discount,setDiscount]=useState(0);
  const canDiscount=can(staff,'pos_sell');
@@ -65,7 +65,7 @@ export function VehicleSaleDialog({vehicle,staff,onClose,onDone}:{vehicle:Vehicl
   {result?<div className="sale-done"><BadgeCheck size={40}/><b>{result.status==='sold'?'SOLD · dibayar penuh':'RESERVED · baki '+money(result.balance)}</b><p>Dibayar {money(result.paid)} daripada {money(result.price)}</p>
    <div className="action-row"><button className="btn primary" onClick={()=>void print('invoice')}><Printer size={16}/>Cetak invois</button>{result.paid>0&&<button className="btn subtle" onClick={()=>void print('receipt')}><Printer size={16}/>Cetak resit</button>}<button className="btn subtle" onClick={onClose}>Tutup</button></div></div>:
   <form onSubmit={submit}>
-   <div className="form-grid"><Field label="Nama pembeli *"><input required autoFocus maxLength={120} value={buyer} onChange={e=>setBuyer(e.target.value)}/></Field><Field label="Telefon pembeli *"><input required type="tel" inputMode="tel" maxLength={20} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="012-345 6789"/></Field></div>
+   <div className="form-grid"><Field label="Nama pembeli *"><input required autoFocus maxLength={120} value={buyer} readOnly={buyerLocked} onChange={e=>setBuyer(e.target.value)}/></Field><Field label="Telefon pembeli *"><input required type="tel" inputMode="tel" maxLength={20} value={phone} readOnly={buyerLocked} onChange={e=>setPhone(e.target.value)} placeholder="012-345 6789"/></Field></div>{buyerLocked&&<p className="form-note">Pembeli dikunci kerana deposit sudah diterima daripada {vehicle.buyer}. Hanya owner boleh menukar pembeli.</p>}
    {owner?<NumberField label="Harga jualan (RM)" cents value={price} onChange={setPrice}/>:<p className="sale-price">Harga jualan <b>{money(price)}</b></p>}
    {canDiscount&&<NumberField label={vehicle.saleDiscount?'Diskaun tambahan (RM)':'Diskaun (RM)'} cents value={discount} onChange={setDiscount}/>}
    {!!vehicle.saleDiscount&&<p className="form-note">Diskaun sudah direkod {money(vehicle.saleDiscount)}.</p>}

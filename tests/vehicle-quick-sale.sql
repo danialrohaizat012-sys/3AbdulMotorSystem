@@ -32,6 +32,8 @@ do $$declare id1 bigint;id2 bigint;r jsonb;req uuid:=gen_random_uuid();ver integ
  begin perform public.sell_vehicle(id2,(r->>'version')::integer,gen_random_uuid(),'{"buyer":"Siti","buyer_phone":"0198765432","amount":500000,"price":550000}');raise exception 'FAIL staff price change';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
  begin perform public.sell_vehicle(id2,(r->>'version')::integer,gen_random_uuid(),'{"buyer":"","buyer_phone":"0198765432","amount":1}');raise exception 'FAIL no buyer';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
  begin perform public.sell_vehicle(id2,(r->>'version')::integer,gen_random_uuid(),'{"buyer":"Siti","buyer_phone":"12","amount":1}');raise exception 'FAIL bad phone';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
+ -- After Siti's deposit, staff cannot complete the sale for a different buyer.
+ begin perform public.sell_vehicle(id2,(r->>'version')::integer,gen_random_uuid(),'{"buyer":"Abu","buyer_phone":"0111111111","amount":500000}');raise exception 'FAIL buyer swapped after deposit';exception when raise_exception then if SQLERRM like 'FAIL%' then raise;end if;end;
  r:=public.sell_vehicle(id2,(r->>'version')::integer,gen_random_uuid(),'{"buyer":"Siti","buyer_phone":"0198765432","amount":500000,"method":"card"}');
  if r->>'status'<>'sold' or (select count(*) from public.payments where vehicle_id=id2)<>2 then raise exception 'FAIL balance completes sale %',r;end if;
 end$$;
