@@ -8,7 +8,9 @@ import {can,canAccess} from '@/lib/staff';
 import type {StaffProfile} from '@/lib/staff';
 import {money,dateText,vehicleId} from '@/lib/motor';
 import type {Vehicle} from '@/lib/motor';
-import {loadRecords} from '@/lib/records';
+import {getRecord,loadPayments,loadRecords,loadVehicleSales} from '@/lib/records';
+import type {VehicleSaleRow} from '@/lib/records';
+import {printRecordFrom} from '@/lib/print';
 import {VehicleSaleDialog} from './vehicle-sale';
 import {blankService,kindLabels,addProduct,addCustom,setQty,setPrice,refreshCart,cartTotals,changeDue,quickCash,parseRinggit,findByCode,searchProducts,categories,buildCheckout,receiptNo,lowStock,sellable,methodLabels,blankProduct} from '@/lib/pos-model';
 import type {PosProduct,CartLine,PayMethod,LineKind,SaleType,ServiceInfo} from '@/lib/pos-model';
@@ -43,7 +45,7 @@ export function PosPage({staff}:{staff:StaffProfile}){
   {tab==='counter'&&seller&&<Counter initialService={startService} products={products} loading={loading} manager={manager} onSold={sale=>{void reload();setOpenSale(sale)}} onStale={reload}/>}
   {tab==='vehicles'&&canSellVehicles&&<CounterVehicles staff={staff}/>}
   {tab==='products'&&<Products products={products} loading={loading} manager={manager} onChanged={reload}/>}
-  {tab==='sales'&&<Sales onOpen={setOpenSale}/>}
+  {tab==='sales'&&<Sales onOpen={setOpenSale} showVehicleSales={canAccess(staff,'inventory')}/>}
   {tab==='shift'&&seller&&<ShiftPanel shift={shift} onChanged={reload}/>}
   {openSale&&<SaleDialog sale={openSale} owner={owner} onClose={()=>{setOpenSale(null);if(location.hash.includes('sale='))history.replaceState(null,'','#pos')}} onChanged={s=>{setOpenSale(s);void reload()}}/>}
  </main>;
@@ -192,19 +194,46 @@ function StockDialog({product,kind,onClose,onSaved}:{product:PosProduct;kind:'re
 
 const dayStart=(iso:string)=>new Date(iso+'T00:00:00+08:00');
 const todayKL=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kuala_Lumpur'});
-function Sales({onOpen}:{onOpen:(s:PosSale)=>void}){
+function Sales({onOpen,showVehicleSales}:{onOpen:(s:PosSale)=>void;showVehicleSales:boolean}){
+ const [vehicleSales,setVehicleSales]=useState<VehicleSaleRow[]>([]);
+ const latestLoad=useRef(0);
  const [day,setDay]=useState(todayKL());const [sales,setSales]=useState<PosSale[]>([]);const [found,setFound]=useState<PosSale[]|null>(null);const [hq,setHq]=useState('');const [searching,setSearching]=useState(false);
  async function searchHistory(e:React.FormEvent){e.preventDefault();if(hq.trim().length<2)return;setSearching(true);try{setFound(await serviceHistory(hq.trim()))}catch(err){toast.error(errorText(err))}finally{setSearching(false)}}const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [query,setQuery]=useState('');
- const load=useCallback(async()=>{setLoading(true);try{const from=dayStart(day);setSales(await loadSales(from,new Date(from.getTime()+86400000)));setError('')}catch(e){setError(errorText(e))}finally{setLoading(false)}},[day]);
- useEffect(()=>{void load()},[load]);
- const done=sales.filter(s=>s.status==='completed');const shown=sales.filter(s=>(receiptNo(s.id)+' '+s.customerName+' '+s.customerPhone+' '+s.cashierName+' '+(s.plate||'')).toLowerCase().includes(query.trim().toLowerCase()));
+ const load=useCallback(async()=>{
+  const revision=++latestLoad.current;
+  setLoading(true);setError('');setSales([]);setVehicleSales([]);
+  const from=dayStart(day);const to=new Date(from.getTime()+86400000);
+  const [counter,motors]=await Promise.allSettled([
+   loadSales(from,to),showVehicleSales?loadVehicleSales(from,to):Promise.resolve([]),
+  ]);
+  if(revision!==latestLoad.current)return;
+  if(counter.status==='fulfilled')setSales(counter.value);
+  if(motors.status==='fulfilled')setVehicleSales(motors.value);
+  setError([counter,motors].flatMap(result=>result.status==='rejected'?[errorText(result.reason)]:[]).join(' '));
+  setLoading(false);
+ },[day,showVehicleSales]);
+ useEffect(()=>{void load();return()=>{latestLoad.current++}},[load]);
+ const done=sales.filter(s=>s.status==='completed');
+ const needle=query.trim().toLowerCase();
+ const shown=[
+  ...sales.filter(s=>[receiptNo(s.id),s.customerName,s.customerPhone,s.cashierName,s.plate].join(' ').toLowerCase().includes(needle)).map(s=>({kind:'pos' as const,time:s.createdAt,s})),
+  ...vehicleSales.filter(v=>[vehicleId(v.id,v.stockNo??undefined),v.brand,v.model,v.plate,v.buyer,v.buyerPhone].join(' ').toLowerCase().includes(needle)).map(v=>({kind:'motor' as const,time:v.soldAt,v})),
+ ].sort((a,b)=>new Date(b.time).getTime()-new Date(a.time).getTime());
+ function printMotorInvoice(id:number){
+  void printRecordFrom(()=>Promise.all([getRecord('vehicles',id),loadPayments('vehicles',id)]),'invoice').catch(e=>toast.error(errorText(e)));
+ }
  return <section>
-  <div className="filters"><Field label="Tarikh"><input type="date" value={day} max={todayKL()} onChange={e=>e.target.value&&setDay(e.target.value)}/></Field><div className="search"><Search size={18}/><input aria-label="Cari jualan" placeholder="No. resit, pelanggan atau juruwang…" value={query} onChange={e=>setQuery(e.target.value)}/></div><button className="btn subtle" disabled={loading} onClick={()=>void load()}><RefreshCw size={16}/>Muat semula</button></div>
-  <div className="stats pos-stats"><div className="stat"><div><span>Bil. jualan</span><Receipt size={18}/></div><strong>{loading?'—':done.length}</strong></div><div className="stat"><div><span>Jumlah jualan</span><Banknote size={18}/></div><strong>{loading?'—':money(done.reduce((s,x)=>s+x.total,0))}</strong></div><div className="stat"><div><span>Dibatalkan</span><X size={18}/></div><strong>{loading?'—':sales.length-done.length}</strong></div></div>
+  <div className="filters"><Field label="Tarikh"><input type="date" value={day} max={todayKL()} onChange={e=>e.target.value&&setDay(e.target.value)}/></Field><div className="search"><Search size={18}/><input aria-label="Cari jualan" placeholder="No. stok, no. resit, plat atau pelanggan…" value={query} onChange={e=>setQuery(e.target.value)}/></div><button className="btn subtle" disabled={loading} onClick={()=>void load()}><RefreshCw size={16}/>Muat semula</button></div>
+  <div className="stats pos-stats"><div className="stat"><div><span>Bil. jualan</span><Receipt size={18}/></div><strong>{loading?'—':done.length+vehicleSales.length}</strong></div><div className="stat"><div><span>Jumlah jualan</span><Banknote size={18}/></div><strong>{loading?'—':money(done.reduce((s,x)=>s+x.total,0)+vehicleSales.reduce((s,v)=>s+v.price,0))}</strong></div><div className="stat"><div><span>Dibatalkan</span><X size={18}/></div><strong>{loading?'—':sales.length-done.length}</strong></div></div>
   <form className="operation-panel pos-history-search" onSubmit={searchHistory}><h3><Wrench size={17}/>Sejarah servis motosikal</h3><div className="search"><Search size={18}/><input aria-label="Cari sejarah servis" placeholder="No. plat, telefon atau nama pelanggan…" value={hq} onChange={e=>setHq(e.target.value)}/></div><button className="btn subtle" disabled={searching||hq.trim().length<2}>{searching?'Mencari…':'Cari'}</button>
    {found&&(found.length?<div className="pos-product-list">{found.map(s=><button type="button" key={s.id} className="pos-product-row pos-sale-row" onClick={()=>void loadSale(s.id).then(onOpen).catch(err=>toast.error(errorText(err)))}><div><b>{s.plate} · {s.bike||'—'}</b><small>{dateText(s.createdAt)} · {receiptNo(s.id)}{s.mileage?' · '+s.mileage.toLocaleString('ms-MY')+' km':''}{s.workNotes?' · '+s.workNotes:''}</small></div><div className="pos-row-stock"><span>{s.mechanic||''}</span><strong>{money(s.total)}</strong></div></button>)}</div>:<p className="muted">Tiada rekod servis dijumpai.</p>)}</form>
   {error&&<p className="form-error" role="alert">{error}</p>}
-  <div className="pos-product-list">{shown.map(s=><button key={s.id} className={'pos-product-row pos-sale-row'+(s.status==='voided'?' inactive':'')} onClick={()=>void loadSale(s.id).then(onOpen).catch(e=>toast.error(errorText(e)))}><div><b>{receiptNo(s.id)}{s.saleType==='service'&&<span className="pos-badge"><Wrench size={12}/>Servis · {s.plate}</span>}{s.status==='voided'?' · DIBATALKAN':''}</b><small>{new Date(s.createdAt).toLocaleTimeString('ms-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit'})} · {s.customerName||'Walk-in'} · {s.cashierName}</small></div><div className="pos-row-stock"><span>{[...new Set((s.payments||[]).filter(p=>p.amount>0).map(p=>methodLabels[p.method]))].join(' + ')}</span><strong>{money(s.total)}</strong></div></button>)}{!loading&&!shown.length&&<p className="muted">Tiada jualan pada tarikh ini.</p>}</div>
+  <div className="pos-product-list">{shown.map(row=>{if(row.kind==='motor'){
+   const v=row.v;
+   return <div key={'motor-'+v.id} className="pos-product-row pos-sale-row"><div><b>{v.brand} {v.model} <span className="pos-badge"><Bike size={12}/>Jualan motor</span></b><small>{vehicleId(v.id,v.stockNo??undefined)}{v.plate?' · '+v.plate:''} · {v.buyer} · {dateText(v.soldAt)}</small></div><div className="pos-row-stock"><strong>{money(v.price)}</strong><div className="action-row"><a className="quiet-link" href={'#inventory?record='+v.id}>Lihat rekod</a><button type="button" className="btn subtle" onClick={()=>printMotorInvoice(v.id)}><Printer size={15}/>Invois</button></div></div></div>;
+  }
+  const s=row.s;
+  return <button key={'pos-'+s.id} className={'pos-product-row pos-sale-row'+(s.status==='voided'?' inactive':'')} onClick={()=>void loadSale(s.id).then(onOpen).catch(e=>toast.error(errorText(e)))}><div><b>{receiptNo(s.id)}{s.saleType==='service'&&<span className="pos-badge"><Wrench size={12}/>Servis · {s.plate}</span>}{s.status==='voided'?' · DIBATALKAN':''}</b><small>{new Date(s.createdAt).toLocaleTimeString('ms-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit'})} · {s.customerName||'Walk-in'} · {s.cashierName}</small></div><div className="pos-row-stock"><span>{[...new Set((s.payments||[]).filter(p=>p.amount>0).map(p=>methodLabels[p.method]))].join(' + ')}</span><strong>{money(s.total)}</strong></div></button>;})}{!loading&&!error&&!shown.length&&<p className="muted">Tiada jualan pada tarikh ini.</p>}</div>
  </section>;
 }
 

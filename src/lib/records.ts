@@ -17,6 +17,22 @@ export function photoPaths(v:Vehicle){return [...new Set((v.photos?.length?v.pho
 export async function signPhotos(paths:string[]){if(!paths.length)return {} as Record<string,string>;const unique=[...new Set(paths.map(photoKey))].sort();return photoCache.get(JSON.stringify(unique),async()=>{const {data,error}=await client().storage.from('vehicle-photos').createSignedUrls(unique,3600);if(error)throw Error('Foto gagal dimuatkan. Cuba muat semula.');return Object.fromEntries((data??[]).filter(p=>p.signedUrl&&p.path).map(p=>[p.path!,p.signedUrl!]))})}
 async function decorate(rows:Record<string,unknown>[]){const mapped=rows.map(mapRow);const urls=await signPhotos(mapped.flatMap(r=>'photo'in r&&r.photo?[r.photo]:[]));return mapped.map(r=>'photo'in r&&r.photo?{...r,photo:urls[r.photo]??''}:r)}
 export async function loadRecords(kind:string,force=false):Promise<(Vehicle|Job)[]>{if(!['catalogue','vehicles','jobs'].includes(kind))throw Error('Rekod tidak sah.');if(force)recordCache.clear();const result=await recordCache.get(kind,async()=>{const rows:Record<string,unknown>[]=[];for(let offset=0;;offset+=250){let query=client().from(kind).select('*').order('id',{ascending:false}).range(offset,offset+249);if(kind==='jobs')query=query.neq('status','collected');const {data,error}=await query;if(error)throw Error('Rekod gagal dimuatkan. Cuba semula.');rows.push(...data);if(data.length<250)break;}return decorate(rows)});return result.map(r=>({...r}))}
+export type VehicleSaleRow={
+ id:number;stockNo:number|null;brand:string;model:string;plate:string;
+ buyer:string;buyerPhone:string;price:number;soldAt:string;
+};
+export async function loadVehicleSales(from:Date,to:Date):Promise<VehicleSaleRow[]>{
+ const sales:VehicleSaleRow[]=[];
+ for(let offset=0;;offset+=250){
+  const {data,error}=await client().from('vehicles')
+   .select('id,stock_no,brand,model,plate,buyer,buyer_phone,price,sold_at')
+   .eq('status','sold').gte('sold_at',from.toISOString()).lt('sold_at',to.toISOString())
+   .order('sold_at',{ascending:false}).order('id',{ascending:false}).range(offset,offset+249);
+  if(error)throw Error('Rekod jualan motosikal gagal dimuatkan.');
+  sales.push(...data.map(row=>({id:row.id,stockNo:row.stock_no,brand:row.brand,model:row.model,plate:row.plate,buyer:row.buyer,buyerPhone:row.buyer_phone,price:row.price,soldAt:row.sold_at})));
+  if(data.length<250)return sales;
+ }
+}
 export async function getRecord(kind:'vehicles'|'jobs'|'catalogue',id:number){const {data,error}=await client().from(kind).select('*').eq('id',id).maybeSingle();if(error||!data)throw Error('Rekod tidak tersedia atau akses tidak dibenarkan.');return (await decorate([data]))[0]}
 function errorMessage(error:{code?:string;message:string}){if(error.code==='23505')return 'Nombor casis ini sudah digunakan dalam stok aktif.';if(error.code==='P0001'||error.code==='23514')return error.message;return 'Operasi gagal. Semak akses dan maklumat, kemudian cuba semula.'}
 export async function deleteUnusedVehicle(vehicle:Vehicle){
