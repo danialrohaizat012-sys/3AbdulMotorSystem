@@ -106,8 +106,8 @@ export default function MotorApp({mode,staffProfile=null}:{mode:Mode;staffProfil
   {admin&&<><button className="btn primary" disabled={demo||!editable} onClick={()=>void editFresh(detail)}>Edit {mode==='garage'?'job':'motosikal'}</button>{!demo&&<PaymentPanel record={detail} owner={owner} staff={staff} onChanged={refreshDetail}/>}</>}
   </>}</Suspense></DialogContent></Dialog>
   {!admin&&<Dialog open={!!loanVehicle} onOpenChange={open=>{if(!open)setLoanVehicle(null)}}>
-   <DialogContent className="motor-dialog">
-    <DialogHeader><DialogTitle>Kalkulator ansuran</DialogTitle><DialogDescription>{loanVehicle?.brand} {loanVehicle?.model}</DialogDescription></DialogHeader>
+   <DialogContent className="loan-estimator-dialog">
+    <DialogHeader><DialogTitle>Kira Anggaran Ansuran</DialogTitle><DialogDescription>{loanVehicle?.brand} {loanVehicle?.model} · Kadar sebenar tertakluk kepada kelulusan pembiaya.</DialogDescription></DialogHeader>
     {loanVehicle&&(loanError?<div role="alert"><p>{loanError}</p><button type="button" className="btn subtle" onClick={()=>openLoan(loanVehicle)}>Cuba semula</button></div>:!settings?<p role="status">Memuatkan kalkulator…</p>:loanSettings(settings).rateBp===null?<p>Kalkulator belum tersedia.</p>:<LoanCalculator key={loanVehicle.id} vehicle={loanVehicle} settings={settings}/>)}
    </DialogContent>
   </Dialog>}
